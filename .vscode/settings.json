@@ -1,0 +1,12 @@
+{
+    "go.testOnSave": true,
+    "go.testFlags": ["-v", "-race"],
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "counter.go",
+                "cmd": "cd ${workspaceRoot}; go build -o supervisor/_example/plugins/counter ./supervisor/_example/plugins/..."
+            }
+        ]
+    }
+}
