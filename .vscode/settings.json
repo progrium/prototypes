@@ -1,6 +1,6 @@
 {
     "go.testOnSave": true,
-    "go.testFlags": ["-v", "-race"],
+    "go.testFlags": ["-v", "-cover", "-race"],
     "emeraldwalk.runonsave": {
         "commands": [
             {

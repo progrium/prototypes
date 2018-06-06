@@ -224,6 +224,70 @@ func TestSupervisorStopProcess(t *testing.T) {
 	s.Wait()
 }
 
+func TestSupervisorProcessLogs(t *testing.T) {
+	buf := new(bytes.Buffer)
+	s, _ := NewSupervisor(buf)
+	s.watcher = &mockWatcher{
+		events: make(chan fsnotify.Event),
+		errors: make(chan error),
+	}
+	s.restartDelay = time.Duration(0)
+	s.cmdFactory = helperCommand
+	s.maxRestarts = 0
+	s.fs = afero.NewMemMapFs()
+	afero.WriteFile(s.fs, "/bin/stdout", []byte{}, 0700)
+	afero.WriteFile(s.fs, "/bin/stderr", []byte{}, 0700)
+	err := s.LoadDir("/bin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Wait()
+	if got := s.Logs("/bin/stdout"); string(got) != "stdout\n" {
+		t.Fatalf("got %v, want %v", string(got), "stdout\n")
+	}
+	if got := s.Logs("/bin/stderr"); string(got) != "stderr\n" {
+		t.Fatalf("got %v, want %v", got, "stderr\n")
+	}
+}
+
+func TestSupervisorWatch(t *testing.T) {
+	buf := new(bytes.Buffer)
+	s, _ := NewSupervisor(buf)
+	watcher := &mockWatcher{
+		events: make(chan fsnotify.Event),
+		errors: make(chan error),
+	}
+	s.watcher = watcher
+	s.restartDelay = time.Duration(0)
+	s.cmdFactory = helperCommand
+	s.maxRestarts = 0
+	s.fs = afero.NewMemMapFs()
+	afero.WriteFile(s.fs, "/bin/wait", []byte{}, 0700)
+	err := s.LoadDir("/bin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	go s.Watch()
+	afero.WriteFile(s.fs, "/bin/stdout", []byte{}, 0700)
+	watcher.events <- fsnotify.Event{
+		Name: "/bin/stdout",
+		Op:   fsnotify.Create,
+	}
+	time.Sleep(200 * time.Millisecond)
+	if got := s.Logs("/bin/stdout"); string(got) != "stdout\n" {
+		t.Fatalf("got %v, want %v", string(got), "stdout\n")
+	}
+	watcher.events <- fsnotify.Event{
+		Name: "/bin/stdout",
+		Op:   fsnotify.Write,
+	}
+	watcher.events <- fsnotify.Event{
+		Name: "/bin/wait",
+		Op:   fsnotify.Remove,
+	}
+	s.Wait()
+}
+
 func TestHelperProcess(*testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -258,5 +322,6 @@ func TestHelperProcess(*testing.T) {
 		fmt.Fprintf(os.Stderr, "Unknown command %q\n", cmd)
 		os.Exit(2)
 	}
+	os.Exit(0)
 
 }

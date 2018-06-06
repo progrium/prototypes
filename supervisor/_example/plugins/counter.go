@@ -10,7 +10,7 @@ func main() {
 	n := 0
 	for {
 		fmt.Println(os.Getpid(), n)
-		n += 2
+		n += 1
 		time.Sleep(2 * time.Second)
 	}
 }

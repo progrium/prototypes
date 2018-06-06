@@ -20,15 +20,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-type LockedWriter struct {
-	io.Writer
+type lockedBuffer struct {
+	*circbuf.Buffer
 	sync.Mutex
 }
 
-func (lw *LockedWriter) Write(b []byte) (n int, err error) {
-	lw.Lock()
-	defer lw.Unlock()
-	return lw.Write(b)
+func (lb *lockedBuffer) Write(b []byte) (n int, err error) {
+	lb.Lock()
+	defer lb.Unlock()
+	return lb.Buffer.Write(b)
+}
+
+func (lb *lockedBuffer) Bytes() []byte {
+	lb.Lock()
+	defer lb.Unlock()
+	return lb.Buffer.Bytes()
 }
 
 type LineWriter struct {
@@ -88,7 +94,7 @@ func (lw *LineWriter) ReadLines(wg *sync.WaitGroup, name string, r io.Reader, is
 
 type Process struct {
 	cmd    *exec.Cmd
-	logs   *circbuf.Buffer
+	logs   *lockedBuffer
 	exited chan int
 	name   string
 }
@@ -100,9 +106,10 @@ func StartProcess(cmd *exec.Cmd, lw *LineWriter) (*Process, error) {
 	if err != nil {
 		panic(err)
 	}
+	lbuf := &lockedBuffer{Buffer: buf}
 
 	p := &Process{
-		logs:   buf,
+		logs:   lbuf,
 		cmd:    cmd,
 		exited: make(chan int),
 	}
@@ -118,9 +125,8 @@ func StartProcess(cmd *exec.Cmd, lw *LineWriter) (*Process, error) {
 
 	pipeWait := new(sync.WaitGroup)
 	pipeWait.Add(2)
-	//lbuf := &LockedWriter{Writer: buf}
-	go lw.ReadLines(pipeWait, name, io.TeeReader(stdout, buf), false)
-	go lw.ReadLines(pipeWait, name, io.TeeReader(stderr, buf), true)
+	go lw.ReadLines(pipeWait, name, io.TeeReader(stdout, lbuf), false)
+	go lw.ReadLines(pipeWait, name, io.TeeReader(stderr, lbuf), true)
 
 	err = cmd.Start()
 	if err != nil {
@@ -207,13 +213,13 @@ func (s *Supervisor) Watch() {
 		case event := <-s.watcher.Events():
 			switch {
 			case event.Op&fsnotify.Write == fsnotify.Write:
-				log.Println("write:", event.Name)
+				//log.Println("write:", event.Name)
 				s.Reload(event.Name)
 			case event.Op&fsnotify.Create == fsnotify.Create:
-				log.Println("create:", event.Name)
-				//s.Reload(event.Name)
+				//log.Println("create:", event.Name)
+				s.Reload(event.Name)
 			case event.Op&fsnotify.Remove == fsnotify.Remove:
-				log.Println("remove:", event.Name)
+				//log.Println("remove:", event.Name)
 				s.Stop(event.Name)
 			}
 		case err := <-s.watcher.Errors():
@@ -221,7 +227,6 @@ func (s *Supervisor) Watch() {
 			log.Println("error:", err)
 		}
 	}
-
 }
 
 func (s *Supervisor) LoadDir(path string) error {
@@ -326,15 +331,14 @@ func (s *Supervisor) reload(path string, retries int) (err error) {
 	if err != nil {
 		return
 	}
+	exited := s.sidecars[path].exited
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		_, ok := s.sidecars[path]
-		if !ok {
-			return
-		}
-		status := <-s.sidecars[path].exited
+		status := <-exited
+		s.Lock()
 		_, ok = s.sidecars[path]
+		s.Unlock()
 		if !ok {
 			return
 		}
