@@ -8,5 +8,6 @@
                 "cmd": "cd ${workspaceRoot}; go build -o supervisor/_example/plugins/counter ./supervisor/_example/plugins/..."
             }
         ]
-    }
+    },
+    "python.linting.pylintEnabled": false
 }

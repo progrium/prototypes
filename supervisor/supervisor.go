@@ -20,6 +20,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO prefix errors
+
 type lockedBuffer struct {
 	*circbuf.Buffer
 	sync.Mutex
@@ -93,10 +95,11 @@ func (lw *LineWriter) ReadLines(wg *sync.WaitGroup, name string, r io.Reader, is
 }
 
 type Process struct {
-	cmd    *exec.Cmd
-	logs   *lockedBuffer
-	exited chan int
-	name   string
+	cmd      *exec.Cmd
+	logs     *lockedBuffer
+	exited   chan int
+	reloaded chan bool
+	name     string
 }
 
 func StartProcess(cmd *exec.Cmd, lw *LineWriter) (*Process, error) {
@@ -109,9 +112,10 @@ func StartProcess(cmd *exec.Cmd, lw *LineWriter) (*Process, error) {
 	lbuf := &lockedBuffer{Buffer: buf}
 
 	p := &Process{
-		logs:   lbuf,
-		cmd:    cmd,
-		exited: make(chan int),
+		logs:     lbuf,
+		cmd:      cmd,
+		exited:   make(chan int),
+		reloaded: make(chan bool),
 	}
 
 	stdout, err := cmd.StdoutPipe()
@@ -159,7 +163,13 @@ func exitStatus(err error) (int, error) {
 	return 0, nil
 }
 
+func noError(err error) bool {
+	return err == nil
+}
+
 type Supervisor struct {
+	ChangeCallback func(path string, reloadable bool, deleted bool)
+
 	sidecars     map[string]*Process
 	output       *LineWriter
 	cmdFactory   func(*exec.Cmd) *exec.Cmd
@@ -186,7 +196,7 @@ func NewSupervisor(output io.Writer) (*Supervisor, error) {
 			}
 			return cmd
 		},
-		restartDelay: time.Duration(500 * time.Millisecond),
+		restartDelay: time.Duration(2 * time.Second),
 		maxRestarts:  -1,
 		fs:           afero.NewOsFs(),
 		watcher:      &wrappedWatcher{watcher},
@@ -214,12 +224,21 @@ func (s *Supervisor) Watch() {
 			switch {
 			case event.Op&fsnotify.Write == fsnotify.Write:
 				//log.Println("write:", event.Name)
+				if s.ChangeCallback != nil {
+					s.ChangeCallback(event.Name, noError(s.reloadable(event.Name)), false)
+				}
 				s.Reload(event.Name)
 			case event.Op&fsnotify.Create == fsnotify.Create:
 				//log.Println("create:", event.Name)
+				if s.ChangeCallback != nil {
+					s.ChangeCallback(event.Name, noError(s.reloadable(event.Name)), false)
+				}
 				s.Reload(event.Name)
 			case event.Op&fsnotify.Remove == fsnotify.Remove:
 				//log.Println("remove:", event.Name)
+				if s.ChangeCallback != nil {
+					s.ChangeCallback(event.Name, noError(s.reloadable(event.Name)), true)
+				}
 				s.Stop(event.Name)
 			}
 		case err := <-s.watcher.Errors():
@@ -269,8 +288,6 @@ func (s *Supervisor) Reload(path string) error {
 }
 
 func (s *Supervisor) reloadable(path string) error {
-	s.Lock()
-	defer s.Unlock()
 	fi, err := s.fs.Stat(path)
 	if err != nil {
 		return err
@@ -314,11 +331,22 @@ func (s *Supervisor) Get(path string) (*os.Process, error) {
 	return p.cmd.Process, nil
 }
 
+func (s *Supervisor) GetAll() map[string]*os.Process {
+	s.Lock()
+	defer s.Unlock()
+	all := make(map[string]*os.Process)
+	for path, p := range s.sidecars {
+		all[path] = p.cmd.Process
+	}
+	return all
+}
+
 func (s *Supervisor) reload(path string, retries int) (err error) {
 	s.Lock()
 	defer s.Unlock()
 	p, ok := s.sidecars[path]
 	if ok {
+		p.reloaded <- true
 		p.cmd.Process.Kill()
 	}
 	cmd := s.cmdFactory(&exec.Cmd{
@@ -332,10 +360,17 @@ func (s *Supervisor) reload(path string, retries int) (err error) {
 		return
 	}
 	exited := s.sidecars[path].exited
+	reloaded := s.sidecars[path].reloaded
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		status := <-exited
+		var status int
+		select {
+		case status = <-exited:
+		case <-reloaded:
+			// Document that logs wont be dumped if reload causes non-zero exit
+			return
+		}
 		s.Lock()
 		_, ok = s.sidecars[path]
 		s.Unlock()

@@ -288,6 +288,8 @@ func TestSupervisorWatch(t *testing.T) {
 	s.Wait()
 }
 
+// TODO: write regression test for reload loop (reloading kills, so starts no process and old process exits and reloads)
+
 func TestHelperProcess(*testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
