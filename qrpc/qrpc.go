@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/progrium/prototypes/qrpc/transport"
+	"golang.org/x/crypto/ssh"
 	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -55,19 +56,20 @@ type Client struct {
 	API     *API
 }
 
-func Dial(addr string, api *API) (*Client, error) {
-	sess, err := transport.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
-	if err != nil {
-		return nil, err
-	}
-	if api == nil {
-		api = NewAPI()
-	}
-	return &Client{
-		Session: sess,
-		API:     api,
-	}, nil
-}
+// func Dial(addr string, api *API) (*Client, error) {
+// 	//sess, err := transport.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
+// 	sess, err := transport.DialSSH(addr, generateSSHClientConfig())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if api == nil {
+// 		api = NewAPI()
+// 	}
+// 	return &Client{
+// 		Session: sess,
+// 		API:     api,
+// 	}, nil
+// }
 
 func (c *Client) Close() error {
 	return c.Session.Close()
@@ -200,11 +202,7 @@ func (s *Server) ServeAPI(sess transport.Session) {
 	}
 }
 
-func (s *Server) ListenAndServe(addr string, api *API) error {
-	listener, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
-	if err != nil {
-		return err
-	}
+func (s *Server) Serve(l transport.Listener, api *API) error {
 	if api != nil {
 		s.API = api
 	}
@@ -212,13 +210,22 @@ func (s *Server) ListenAndServe(addr string, api *API) error {
 		s.API = NewAPI()
 	}
 	for {
-		sess, err := listener.Accept()
+		sess, err := l.Accept()
 		if err != nil {
 			return err
 		}
 		go s.ServeAPI(sess)
 	}
 }
+
+// func (s *Server) ListenAndServe(addr string, api *API) error {
+// 	//l, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
+// 	l, err := transport.ListenSSH(addr, generateSSHServerConfig())
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return s.Serve(l, api)
+// }
 
 func ExportFunc(fn interface{}) Handler {
 	return HandlerFunc(func(r Responder, c *Call) {
@@ -227,10 +234,10 @@ func ExportFunc(fn interface{}) Handler {
 		if err != nil {
 			panic(err)
 		}
-		params, ok := obj.([]interface{})
-		if !ok {
-			panic("only positional arguments in form of array are supported")
-		}
+		//params, ok := obj.([]interface{})
+		// if !ok {
+		// 	panic("only positional arguments in form of array are supported")
+		// }
 
 		// invoke fn with reflect
 
@@ -260,4 +267,27 @@ func generateTLSConfig() *tls.Config {
 		panic(err)
 	}
 	return &tls.Config{Certificates: []tls.Certificate{tlsCert}}
+}
+
+func generateSSHClientConfig() *ssh.ClientConfig {
+	return &ssh.ClientConfig{
+		User:            "qrpc",
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+}
+
+func generateSSHServerConfig() *ssh.ServerConfig {
+	cfg := &ssh.ServerConfig{
+		NoClientAuth: true,
+	}
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+	signer, err := ssh.NewSignerFromKey(key)
+	if err != nil {
+		panic(err)
+	}
+	cfg.AddHostKey(signer)
+	return cfg
 }

@@ -1,35 +1,19 @@
 package transport
 
 import (
-	"context"
 	"crypto/tls"
-	"io"
-	"net"
 
 	quic "github.com/lucas-clemente/quic-go"
 )
 
-type Session interface {
-	Context() context.Context
-	Close() error
-	Open() (Channel, error)
-	Accept() (Channel, error)
-	LocalAddr() net.Addr
-	RemoteAddr() net.Addr
+func DialQuic(addr string, tlsConf *tls.Config, config *quic.Config) (Session, error) {
+	sess, err := quic.DialAddr(addr, tlsConf, config)
+	return &quicSession{sess}, err
 }
 
-type Channel interface {
-	ID() uint64
-	Context() context.Context
-	io.Reader
-	io.Writer
-	io.Closer
-}
-
-type Listener interface {
-	Close() error
-	Addr() net.Addr
-	Accept() (Session, error)
+func ListenQuic(addr string, tlsConf *tls.Config, config *quic.Config) (Listener, error) {
+	listener, err := quic.ListenAddr(addr, tlsConf, config)
+	return &quicListener{listener}, err
 }
 
 type quicSession struct {
@@ -56,16 +40,6 @@ type quicChannel struct {
 
 func (c *quicChannel) ID() uint64 {
 	return uint64(c.StreamID())
-}
-
-func DialQuic(addr string, tlsConf *tls.Config, config *quic.Config) (Session, error) {
-	sess, err := quic.DialAddr(addr, tlsConf, config)
-	return &quicSession{sess}, err
-}
-
-func ListenQuic(addr string, tlsConf *tls.Config, config *quic.Config) (Listener, error) {
-	listener, err := quic.ListenAddr(addr, tlsConf, config)
-	return &quicListener{listener}, err
 }
 
 type quicListener struct {
