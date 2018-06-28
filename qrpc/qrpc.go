@@ -14,92 +14,84 @@ import (
 	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
-type Request struct {
+type Call struct {
 	Destination string
+	ObjectPath  string // todo
+	Method      string // todo
+	Caller      Caller
+
+	dec *msgpack.Decoder
 }
 
-type Response struct {
+func (c *Call) Decode(v interface{}) error {
+	return c.dec.Decode(v)
+}
+
+type ResponseHeader struct {
 	Error error
 }
 
-type Destinations []Destination
-
-type Destination struct {
-	Path    string
-	Handler Handler
+type Responder interface {
+	Header() *ResponseHeader
+	Return(interface{}) error
 }
 
-type Handler func(req interface{}) (interface{}, error)
+type Handler interface {
+	ServeRPC(Responder, *Call)
+}
 
-type Peer interface {
-	Session() transport.Session
-	Register(path string, obj interface{})
+type HandlerFunc func(Responder, *Call)
+
+func (f HandlerFunc) ServeRPC(resp Responder, call *Call) {
+	f(resp, call)
+}
+
+type Caller interface {
 	Call(path string, args, reply interface{}) error
-	Close() error
 }
 
-type peer struct {
-	session  transport.Session
-	handlers map[string]Handler
-	mu       sync.Mutex
+type Client struct {
+	Session transport.Session
+	API     *API
 }
 
-func ListenAndServe(addr string, dests Destinations) error {
-	listener, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
-	if err != nil {
-		return err
-	}
-	for {
-		sess, err := listener.Accept()
-		if err != nil {
-			return err
-		}
-		peer := NewPeer(sess)
-		for _, v := range dests {
-			peer.Register(v.Path, v.Handler)
-		}
-		go peer.Serve()
-	}
-}
-
-func DialPeer(addr string) (*peer, error) {
+func Dial(addr string, api *API) (*Client, error) {
 	sess, err := transport.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
 	if err != nil {
 		return nil, err
 	}
-	return NewPeer(sess), nil
+	if api == nil {
+		api = NewAPI()
+	}
+	return &Client{
+		Session: sess,
+		API:     api,
+	}, nil
 }
 
-func NewPeer(sess transport.Session) *peer {
-	return &peer{
-		session:  sess,
-		handlers: make(map[string]Handler),
+func (c *Client) Close() error {
+	return c.Session.Close()
+}
+
+func (c *Client) ServeAPI() {
+	for {
+		ch, err := c.Session.Accept()
+		if err != nil {
+			panic(err)
+		}
+		go c.API.Serve(c.Session, ch)
 	}
 }
 
-func (p *peer) Session() transport.Session {
-	return p.session
-}
-
-func (p *peer) Close() error {
-	return p.session.Close()
-}
-
-func (p *peer) Register(path string, handler Handler) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.handlers[path] = handler
-}
-
-func (p *peer) Call(path string, args, reply interface{}) error {
-	ch, err := p.session.Open()
+func (c *Client) Call(path string, args, reply interface{}) error {
+	ch, err := c.Session.Open()
 	if err != nil {
 		return err
 	}
 	defer ch.Close()
 	// request
 	enc := msgpack.NewEncoder(ch)
-	err = enc.Encode(Request{
+	err = enc.Encode(Call{
 		Destination: path,
 	})
 	if err != nil {
@@ -111,7 +103,7 @@ func (p *peer) Call(path string, args, reply interface{}) error {
 	}
 	// response
 	dec := msgpack.NewDecoder(ch)
-	var resp Response
+	var resp ResponseHeader
 	err = dec.Decode(&resp)
 	if err != nil {
 		return err
@@ -122,52 +114,131 @@ func (p *peer) Call(path string, args, reply interface{}) error {
 	return dec.Decode(reply)
 }
 
-func (p *peer) sendResponse(ch transport.Channel, value interface{}, err error) error {
-	enc := msgpack.NewEncoder(ch)
-	e := enc.Encode(Response{
-		Error: err,
-	})
-	if e != nil {
-		return e
-	}
-	err = enc.Encode(value)
-	if e != nil {
-		return e
-	}
-	return ch.Close()
+type API struct {
+	handlers map[string]Handler
+	mu       sync.Mutex
 }
 
-func (p *peer) Serve() {
-	for {
-		ch, err := p.session.Accept()
-		if err != nil {
-			panic(err)
-		}
-		dec := msgpack.NewDecoder(ch)
-		var req Request
-		err = dec.Decode(&req)
-		if err != nil {
-			panic(err)
-		}
-		p.mu.Lock()
-		handler, exists := p.handlers[req.Destination]
-		p.mu.Unlock()
-		if !exists {
-			p.sendResponse(ch, nil, errors.New("handler does not exist for this destination"))
-			continue
-		}
-		var payload interface{}
-		err = dec.Decode(&payload)
-		if err != nil {
-			panic(err)
-		}
-		reply, err := handler(payload)
-		if err != nil {
-			p.sendResponse(ch, nil, err)
-			continue
-		}
-		p.sendResponse(ch, reply, nil)
+func NewAPI() *API {
+	return &API{
+		handlers: make(map[string]Handler),
 	}
+}
+
+func (a *API) Handle(path string, handler Handler) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.handlers[path] = handler
+}
+
+func (a *API) HandleFunc(path string, handler func(Responder, *Call)) {
+	a.Handle(path, HandlerFunc(handler))
+}
+
+func (a *API) Serve(sess transport.Session, ch transport.Channel) {
+	dec := msgpack.NewDecoder(ch)
+	var call Call
+	err := dec.Decode(&call)
+	if err != nil {
+		panic(err)
+	}
+	call.dec = dec
+	call.Caller = &Client{
+		Session: sess,
+	}
+	header := &ResponseHeader{}
+	resp := &responder{ch, header}
+	a.mu.Lock()
+	handler, exists := a.handlers[call.Destination]
+	a.mu.Unlock()
+	if !exists {
+		resp.Return(errors.New("handler does not exist for this destination"))
+		return
+	}
+	handler.ServeRPC(resp, &call)
+}
+
+type responder struct {
+	ch     transport.Channel
+	header *ResponseHeader
+}
+
+func (r *responder) Header() *ResponseHeader {
+	return r.header
+}
+
+func (r *responder) Return(v interface{}) error {
+	enc := msgpack.NewEncoder(r.ch)
+	var e error
+	var ok bool
+	if e, ok = v.(error); ok {
+		v = nil
+	}
+	r.header.Error = e
+	err := enc.Encode(r.header)
+	if err != nil {
+		return err
+	}
+	err = enc.Encode(v)
+	if err != nil {
+		return err
+	}
+	return r.ch.Close()
+}
+
+type Server struct {
+	API *API
+}
+
+func (s *Server) ServeAPI(sess transport.Session) {
+	for {
+		ch, err := sess.Accept()
+		if err != nil {
+			panic(err)
+		}
+		go s.API.Serve(sess, ch)
+	}
+}
+
+func (s *Server) ListenAndServe(addr string, api *API) error {
+	listener, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
+	if err != nil {
+		return err
+	}
+	if api != nil {
+		s.API = api
+	}
+	if s.API == nil {
+		s.API = NewAPI()
+	}
+	for {
+		sess, err := listener.Accept()
+		if err != nil {
+			return err
+		}
+		go s.ServeAPI(sess)
+	}
+}
+
+func ExportFunc(fn interface{}) Handler {
+	return HandlerFunc(func(r Responder, c *Call) {
+		var obj interface{}
+		err := c.Decode(&obj)
+		if err != nil {
+			panic(err)
+		}
+		params, ok := obj.([]interface{})
+		if !ok {
+			panic("only positional arguments in form of array are supported")
+		}
+
+		// invoke fn with reflect
+
+		// look error type in return values
+		// convert remaining multiple values to array
+
+		//r.Return(ret)
+	})
 }
 
 // Setup a bare-bones TLS config for the server
