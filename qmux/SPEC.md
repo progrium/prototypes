@@ -94,7 +94,7 @@ It's extracted from the SSH Connection Protocol and simplified greatly.
    QMUX_MSG_CHANNEL_EOF.
 
       byte      QMUX_MSG_CHANNEL_CLOSE
-      uint32    recipient channel
+      uint64    recipient channel
 
    This message does not consume window space and can be sent even if no
    window space is available.
