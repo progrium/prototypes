@@ -1,7 +1,8 @@
 # qmux
 
 qmux is a wire protocol for multiplexing connections or streams into a single connection.
-It's extracted from the SSH Connection Protocol and simplified greatly.
+It's extracted directly from the [SSH Connection Protocol](https://tools.ietf.org/html/rfc4254#page-5) 
+and simplified (no channel types, accept/reject step, or extended data).
 
 ## Channels
 
@@ -25,9 +26,9 @@ It's extracted from the SSH Connection Protocol and simplified greatly.
    size in the message.
 
       byte      QMUX_MSG_CHANNEL_OPEN
-      uint64    sender channel
-      uint64    initial window size
-      uint64    maximum packet size
+      uint32    sender channel
+      uint32    initial window size
+      uint32    maximum packet size
 
    The 'sender channel' is a local identifier for the channel used by the
    sender of this message.  The 'initial window size' specifies how many
@@ -45,19 +46,19 @@ It's extracted from the SSH Connection Protocol and simplified greatly.
    the following message to adjust the window.
 
       byte      QMUX_MSG_CHANNEL_WINDOW_ADJUST
-      uint64    recipient channel
-      uint64    bytes to add
+      uint32    recipient channel
+      uint32    bytes to add
 
    After receiving this message, the recipient MAY send the given number
    of bytes more than it was previously allowed to send; the window size
    is incremented.  Implementations MUST correctly handle window sizes
-   of up to 2^64 - 1 bytes.  The window MUST NOT be increased above
-   2^64 - 1 bytes.
+   of up to 2^32 - 1 bytes.  The window MUST NOT be increased above
+   2^32 - 1 bytes.
 
    Data transfer is done with messages of the following type.
 
       byte      QMUX_MSG_CHANNEL_DATA
-      uint64    recipient channel
+      uint32    recipient channel
       string    data
 
    The maximum amount of data allowed is determined by the maximum
@@ -75,7 +76,7 @@ It's extracted from the SSH Connection Protocol and simplified greatly.
    send QMUX_MSG_CHANNEL_EOF.
 
       byte      QMUX_MSG_CHANNEL_EOF
-      uint64    recipient channel
+      uint32    recipient channel
 
    No explicit response is sent to this message.  However, the
    application may send EOF to whatever is at the other end of the
@@ -94,7 +95,7 @@ It's extracted from the SSH Connection Protocol and simplified greatly.
    QMUX_MSG_CHANNEL_EOF.
 
       byte      QMUX_MSG_CHANNEL_CLOSE
-      uint64    recipient channel
+      uint32    recipient channel
 
    This message does not consume window space and can be sent even if no
    window space is available.
@@ -121,16 +122,18 @@ It's extracted from the SSH Connection Protocol and simplified greatly.
       data is sometimes represented as an array of bytes, written
       byte[n], where n is the number of bytes in the array.
 
-   uint64
+   uint32
 
-      Represents a 64-bit unsigned integer.  Stored as eight bytes in
-      the order of decreasing significance (network byte order).
+      Represents a 32-bit unsigned integer.  Stored as four bytes in the
+      order of decreasing significance (network byte order).  For
+      example: the value 699921578 (0x29b7f4aa) is stored as 29 b7 f4
+      aa.
 
    string
 
       Arbitrary length binary string.  Strings are allowed to contain
       arbitrary binary data, including null characters and 8-bit
-      characters.  They are stored as a uint64 containing its length
+      characters.  They are stored as a uint32 containing its length
       (number of bytes that follow) and zero (= empty string) or more
       bytes that are the value of the string.  Terminating null
       characters are not used.
