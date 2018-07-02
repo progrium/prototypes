@@ -77,7 +77,8 @@ func main() {
 
 	//l, err := transport.ListenSSH(addr, generateSSHServerConfig())
 	//l, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
-	l, err := transport.ListenMuxado(addr, nil)
+	//l, err := transport.ListenMuxado(addr, nil)
+	l, err := transport.ListenTCP(addr)
 	if err != nil {
 		panic(err)
 	}
@@ -91,7 +92,8 @@ func main() {
 
 	//sess, err := transport.DialSSH(addr, generateSSHClientConfig())
 	//sess, err := transport.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
-	sess, err := transport.DialMuxado(addr, nil)
+	//sess, err := transport.DialMuxado(addr, nil)
+	sess, err := transport.DialTCP(addr)
 	if err != nil {
 		panic(err)
 	}

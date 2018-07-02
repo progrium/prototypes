@@ -39,6 +39,23 @@ and simplified (no channel types, accept/reject step, or extended data).
    interactive connections to get better interactive response on slow
    links.
 
+   The remote side then decides whether it can open the channel, and
+   responds with either QMUX_MSG_CHANNEL_OPEN_CONFIRMATION or
+   QMUX_MSG_CHANNEL_OPEN_FAILURE.
+
+      byte      QMUX_MSG_CHANNEL_OPEN_CONFIRMATION
+      uint32    recipient channel
+      uint32    sender channel
+      uint32    initial window size
+      uint32    maximum packet size
+
+   The 'recipient channel' is the channel number given in the original
+   open request, and 'sender channel' is the channel number allocated by
+   the other side.
+
+      byte      QMUX_MSG_CHANNEL_OPEN_FAILURE
+      uint32    recipient channel
+
 ###  Data Transfer
 
    The window size specifies how many bytes the other party can send
@@ -109,10 +126,12 @@ and simplified (no channel types, accept/reject step, or extended data).
    number byte value.
 
             QMUX_MSG_CHANNEL_OPEN                    100
-            QMUX_MSG_CHANNEL_WINDOW_ADJUST           101
-            QMUX_MSG_CHANNEL_DATA                    102
-            QMUX_MSG_CHANNEL_EOF                     103
-            QMUX_MSG_CHANNEL_CLOSE                   104
+            QMUX_MSG_CHANNEL_OPEN_CONFIRMATION       101
+            QMUX_MSG_CHANNEL_OPEN_FAILURE            102
+            QMUX_MSG_CHANNEL_WINDOW_ADJUST           103
+            QMUX_MSG_CHANNEL_DATA                    104
+            QMUX_MSG_CHANNEL_EOF                     105
+            QMUX_MSG_CHANNEL_CLOSE                   106
 
 ## Data Type Representations Used
 

@@ -1,17 +1,10 @@
 package qrpc
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
-	"math/big"
 	"sync"
 
 	"github.com/progrium/prototypes/qrpc/transport"
-	"golang.org/x/crypto/ssh"
 	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -56,26 +49,14 @@ type Client struct {
 	API     *API
 }
 
-// func Dial(addr string, api *API) (*Client, error) {
-// 	//sess, err := transport.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
-// 	sess, err := transport.DialSSH(addr, generateSSHClientConfig())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if api == nil {
-// 		api = NewAPI()
-// 	}
-// 	return &Client{
-// 		Session: sess,
-// 		API:     api,
-// 	}, nil
-// }
-
 func (c *Client) Close() error {
 	return c.Session.Close()
 }
 
 func (c *Client) ServeAPI() {
+	if c.API == nil {
+		c.API = NewAPI()
+	}
 	for {
 		ch, err := c.Session.Accept()
 		if err != nil {
@@ -218,15 +199,6 @@ func (s *Server) Serve(l transport.Listener, api *API) error {
 	}
 }
 
-// func (s *Server) ListenAndServe(addr string, api *API) error {
-// 	//l, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
-// 	l, err := transport.ListenSSH(addr, generateSSHServerConfig())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return s.Serve(l, api)
-// }
-
 func ExportFunc(fn interface{}) Handler {
 	return HandlerFunc(func(r Responder, c *Call) {
 		var obj interface{}
@@ -246,48 +218,4 @@ func ExportFunc(fn interface{}) Handler {
 
 		//r.Return(ret)
 	})
-}
-
-// Setup a bare-bones TLS config for the server
-func generateTLSConfig() *tls.Config {
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
-	if err != nil {
-		panic(err)
-	}
-	template := x509.Certificate{SerialNumber: big.NewInt(1)}
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	if err != nil {
-		panic(err)
-	}
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-
-	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		panic(err)
-	}
-	return &tls.Config{Certificates: []tls.Certificate{tlsCert}}
-}
-
-func generateSSHClientConfig() *ssh.ClientConfig {
-	return &ssh.ClientConfig{
-		User:            "qrpc",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-}
-
-func generateSSHServerConfig() *ssh.ServerConfig {
-	cfg := &ssh.ServerConfig{
-		NoClientAuth: true,
-	}
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		panic(err)
-	}
-	signer, err := ssh.NewSignerFromKey(key)
-	if err != nil {
-		panic(err)
-	}
-	cfg.AddHostKey(signer)
-	return cfg
 }
