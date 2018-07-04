@@ -2,6 +2,9 @@ package qrpc
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/progrium/prototypes/qrpc/transport"
@@ -10,11 +13,17 @@ import (
 
 type Call struct {
 	Destination string
-	ObjectPath  string // todo
-	Method      string // todo
+	ObjectPath  string
+	Method      string
 	Caller      Caller
 
 	dec *msgpack.Decoder
+}
+
+func (c *Call) parse() {
+	parts := strings.Split(c.Destination, "/")
+	c.ObjectPath = strings.Join(parts[0:len(parts)-2], "/")
+	c.Method = parts[len(parts)-1]
 }
 
 func (c *Call) Decode(v interface{}) error {
@@ -125,6 +134,7 @@ func (a *API) Serve(sess transport.Session, ch transport.Channel) {
 	if err != nil {
 		panic(err)
 	}
+	call.parse()
 	call.dec = dec
 	call.Caller = &Client{
 		Session: sess,
@@ -135,8 +145,18 @@ func (a *API) Serve(sess transport.Session, ch transport.Channel) {
 	handler, exists := a.handlers[call.Destination]
 	a.mu.Unlock()
 	if !exists {
-		resp.Return(errors.New("handler does not exist for this destination"))
-		return
+		a.mu.Lock()
+		for k, v := range a.handlers {
+			if strings.HasPrefix(call.Destination, k) {
+				handler = v
+				break
+			}
+		}
+		a.mu.Unlock()
+		if handler == nil {
+			resp.Return(errors.New("handler does not exist for this destination"))
+			return
+		}
 	}
 	handler.ServeRPC(resp, &call)
 }
@@ -199,23 +219,105 @@ func (s *Server) Serve(l transport.Listener, api *API) error {
 	}
 }
 
-func ExportFunc(fn interface{}) Handler {
+func ExportFunc(fn interface{}) (Handler, error) {
+	return exportFunc(fn, nil)
+}
+
+func exportFunc(fn interface{}, rcvr interface{}) (Handler, error) {
+	reflectedFn := reflect.ValueOf(fn)
+
+	reflectedType := reflect.TypeOf(fn)
+	if reflectedType.Kind() != reflect.Func {
+		return nil, fmt.Errorf("takes only a function")
+	}
+	if rcvr != nil {
+		if reflectedType.NumIn() != 2 {
+			return nil, fmt.Errorf("only supports 1 argument atm, got %d", reflectedType.NumIn())
+		}
+	} else {
+		if reflectedType.NumIn() != 1 {
+			return nil, fmt.Errorf("only supports 1 argument atm, got %d", reflectedType.NumIn())
+		}
+	}
+	if reflectedType.NumOut() > 2 {
+		return nil, fmt.Errorf("only supports up to 1 return value and optional error")
+	}
+
+	var paramType reflect.Type
+	if rcvr != nil {
+		paramType = reflectedType.In(1)
+	} else {
+		paramType = reflectedType.In(0)
+	}
+	errorInterface := reflect.TypeOf((*error)(nil)).Elem()
+
 	return HandlerFunc(func(r Responder, c *Call) {
-		var obj interface{}
-		err := c.Decode(&obj)
+		var paramValue reflect.Value
+		if paramType.Kind() == reflect.Ptr {
+			paramValue = reflect.New(paramType.Elem())
+		} else {
+			paramValue = reflect.New(paramType)
+		}
+
+		err := c.Decode(paramValue.Interface())
 		if err != nil {
+			// arguments weren't what was expected,
+			// or any other error
 			panic(err)
 		}
-		//params, ok := obj.([]interface{})
-		// if !ok {
-		// 	panic("only positional arguments in form of array are supported")
-		// }
 
-		// invoke fn with reflect
+		var params []reflect.Value
+		if rcvr != nil {
+			params = append(params, reflect.ValueOf(rcvr))
+		}
+		if paramType.Kind() == reflect.Ptr {
+			params = append(params, paramValue)
+		} else {
+			params = append(params, paramValue.Elem())
+		}
+		retVals := reflectedFn.Call(params)
 
-		// look error type in return values
-		// convert remaining multiple values to array
+		if len(retVals) == 0 {
+			r.Return(nil)
+			return
+		}
 
-		//r.Return(ret)
-	})
+		// assuming up to 2 return values, one being an error
+		var retVal reflect.Value
+		for _, v := range retVals {
+			if v.Type().Implements(errorInterface) {
+				if !v.IsNil() {
+					r.Return(v.Interface().(error))
+					return
+				}
+			} else {
+				retVal = v
+			}
+		}
+		r.Return(retVal.Interface())
+
+	}), nil
 }
+
+func Export(v interface{}) (Handler, error) {
+	methodHandlers := make(map[string]Handler)
+	reflectedType := reflect.TypeOf(v)
+	for i := 0; i < reflectedType.NumMethod(); i++ {
+		rmethod := reflectedType.Method(i)
+		handler, err := exportFunc(rmethod.Func.Interface(), v)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %s", rmethod.Name, err.Error())
+		}
+		methodHandlers[rmethod.Name] = handler
+	}
+	return HandlerFunc(func(r Responder, c *Call) {
+		handler, ok := methodHandlers[c.Method]
+		if !ok {
+			r.Return(errors.New("method handler does not exist for this destination"))
+			return
+		}
+		handler.ServeRPC(r, c)
+	}), nil
+}
+
+// TODO: object manager

@@ -6,17 +6,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"math/big"
+	"strings"
 
 	"github.com/progrium/prototypes/qrpc"
 	"github.com/progrium/prototypes/qrpc/transport"
 	"golang.org/x/crypto/ssh"
 )
-
-// TODO: Maybe try another transport
-// TODO: reflection stuff. register objects, not functions
 
 const addr = "localhost:4242"
 
@@ -24,6 +24,22 @@ type EchoMessage struct {
 	Message string
 	Req     bool
 	Resp    bool
+}
+
+type DemoService struct {
+	Prefix string
+}
+
+func (s *DemoService) Upper(message string) string {
+	return strings.ToUpper(s.Prefix + message)
+}
+
+func (s *DemoService) Echo(message string) string {
+	return s.Prefix + message
+}
+
+func (s *DemoService) Err(message string) error {
+	return errors.New(s.Prefix + message)
 }
 
 func simpleEcho(message string) (string, error) {
@@ -34,7 +50,18 @@ func simpleEcho(message string) (string, error) {
 func main() {
 	done := make(chan bool)
 	api := qrpc.NewAPI()
-	//api.Handle("simple-echo", qrpc.ExportFunc(simpleEcho))
+	handler, err := qrpc.ExportFunc(simpleEcho)
+	if err != nil {
+		panic(err)
+	}
+	api.Handle("simple-echo", handler)
+	handler, err = qrpc.Export(&DemoService{
+		Prefix: "TEST: ",
+	})
+	if err != nil {
+		panic(err)
+	}
+	api.Handle("demo", handler)
 	api.HandleFunc("echo-client", func(r qrpc.Responder, c *qrpc.Call) {
 		log.Println("echo-client called")
 		var msg EchoMessage
@@ -102,19 +129,19 @@ func main() {
 		API:     api,
 	}
 	go client.ServeAPI()
-	req := &EchoMessage{
-		Message: "hello server",
-		Req:     true,
-	}
-	fmt.Printf("req: %#v\n", req)
-	var resp EchoMessage
-	err = client.Call("echo-server", req, &resp)
+
+	flag.Parse()
+
+	var resp string
+	err = client.Call(flag.Arg(0), "Hello", &resp)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("resp: %#v\n", resp)
-	<-done
+	//<-done
 }
+
+// ================== HELPERS ===================
 
 func generateTLSConfig() *tls.Config {
 	key, err := rsa.GenerateKey(rand.Reader, 1024)
