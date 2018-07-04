@@ -21,7 +21,15 @@ type Call struct {
 }
 
 func (c *Call) parse() {
+	if c.Destination[0] == '/' {
+		c.Destination = c.Destination[1:]
+	}
 	parts := strings.Split(c.Destination, "/")
+	if len(parts) == 1 {
+		c.ObjectPath = "/"
+		c.Method = parts[0]
+		return
+	}
 	c.ObjectPath = strings.Join(parts[0:len(parts)-2], "/")
 	c.Method = parts[len(parts)-1]
 }
@@ -321,3 +329,14 @@ func Export(v interface{}) (Handler, error) {
 }
 
 // TODO: object manager
+type ObjectManager interface {
+	Register(v interface{}) ManagedObject
+	ServeRPC(r Responder, c *Call)
+	Export(api *API, path string)
+}
+
+type ManagedObject interface {
+	Dispose()
+	Path()
+	Value()
+}
