@@ -47,29 +47,37 @@ interface channelCloseMsg {
 	peersID: number;
 }
 
-interface Session {
-	open(): Promise<Channel>;
-	accept(): Promise<Channel>;
-    close();
+interface IConn {
+	read(buffer: Uint8Array): Promise<number>;
+	write(buffer: Uint8Array): Promise<number>;
+	close(): Promise<void>;
+	closeWrite(): Promise<void>;
+}
+
+interface ISession {
+	open(): Promise<IChannel>;
+	accept(): Promise<IChannel>;
+    close(): Promise<void>;
     wait(): Promise<void>;
 }
 
-// https://nodejs.org/api/fs.html#fs_fs_promises_api 
-interface Channel {
-	// Read reads up to len(data) bytes from the channel.
-	Read(data []byte) (int, error)
+interface IChannel extends IConn {
+	ident(): number
+}
 
-	// Write writes len(data) bytes to the channel.
-	Write(data []byte) (int, error)
+class Session {
+	conn: IConn;
+	channels: Array<IChannel>;
 
-	// Close signals end of channel use. No data may be sent after this
-	// call.
-	Close() error
+	constructor(conn: IConn) {
+        this.conn = conn;
+	}
+	
+	addCh(ch: IChannel): number {
+		
+	}
 
-	// CloseWrite signals the end of sending in-band
-	// data. Requests may still be sent, and the other side may
-	// still send data
-	CloseWrite() error
+	rmCh(id: number) {
 
-	ID() uint32
+	}
 }

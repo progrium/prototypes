@@ -6,12 +6,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"math/big"
-	"strings"
 
 	"github.com/progrium/prototypes/qrpc"
 	"github.com/progrium/prototypes/qrpc/transport"
@@ -20,88 +18,38 @@ import (
 
 const addr = "localhost:4242"
 
-type EchoMessage struct {
-	Message string
-	Req     bool
-	Resp    bool
+type Person struct {
+	name string
+	age  int
 }
 
-type DemoService struct {
-	Prefix string
+func (p *Person) Name() string {
+	return p.name
 }
 
-func (s *DemoService) Upper(message string) string {
-	return strings.ToUpper(s.Prefix + message)
+func (p *Person) Age() int {
+	return p.age
 }
 
-func (s *DemoService) Echo(message string) string {
-	return s.Prefix + message
+func (p *Person) IncrAge() {
+	p.age += 1
 }
 
-func (s *DemoService) Err(message string) error {
-	return errors.New(s.Prefix + message)
-}
+type PeopleService struct{}
 
-func simpleEcho(message string) (string, error) {
-	log.Println("simple echo called")
-	return message, nil
+func (_ *PeopleService) MakePerson(name string) {
+
 }
 
 func main() {
-	done := make(chan bool)
 	api := qrpc.NewAPI()
-	handler, err := qrpc.ExportFunc(simpleEcho)
-	if err != nil {
-		panic(err)
-	}
-	api.Handle("simple-echo", handler)
-	handler, err = qrpc.Export(&DemoService{
-		Prefix: "TEST: ",
-	})
+	handler, err := qrpc.Export(&PeopleService{})
 	if err != nil {
 		panic(err)
 	}
 	api.Handle("demo", handler)
-	api.HandleFunc("echo-client", func(r qrpc.Responder, c *qrpc.Call) {
-		log.Println("echo-client called")
-		var msg EchoMessage
-		err := c.Decode(&msg)
-		if err != nil {
-			r.Return(err)
-			return
-		}
-		msg.Req = false
-		msg.Resp = true
-		r.Return(msg)
-	})
-	api.HandleFunc("echo-server", func(r qrpc.Responder, c *qrpc.Call) {
-		log.Println("echo-server called")
-		var msg EchoMessage
-		err := c.Decode(&msg)
-		if err != nil {
-			r.Return(err)
-			return
-		}
-		msg.Req = false
-		msg.Resp = true
-		r.Return(msg)
-
-		req := &EchoMessage{
-			Message: "hello client",
-			Req:     true,
-		}
-		fmt.Printf("req: %#v\n", req)
-		var resp EchoMessage
-		err = c.Caller.Call("echo-client", req, &resp)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("resp: %#v\n", resp)
-		done <- true
-	})
 
 	// server
-
 	//l, err := transport.ListenSSH(addr, generateSSHServerConfig())
 	//l, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
 	//l, err := transport.ListenMuxado(addr, nil)
@@ -116,7 +64,6 @@ func main() {
 	}()
 
 	// client
-
 	//sess, err := transport.DialSSH(addr, generateSSHClientConfig())
 	//sess, err := transport.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
 	//sess, err := transport.DialMuxado(addr, nil)
@@ -138,7 +85,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("resp: %#v\n", resp)
-	//<-done
+
 }
 
 // ================== HELPERS ===================
