@@ -4,41 +4,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gorilla/websocket"
-	"github.com/progrium/duplex/golang"
+	"github.com/progrium/prototypes/qrpc"
+	"github.com/progrium/prototypes/qrpc/transport"
 )
 
-// Logs going to stderr?
-
-var rpc = duplex.NewRPC(duplex.NewJSONCodec())
-
-func init() {
-	rpc.Register("echo2", func(ch *duplex.Channel) error {
-		var obj interface{}
-		if _, err := ch.Recv(&obj); err != nil {
-			return err
-		}
-		fmt.Printf("echo2: %#v\n", obj)
-		return ch.Send(obj, false)
-	})
-}
-
-type GorillaWSAdapter struct {
-	*websocket.Conn
-}
-
-func (ws *GorillaWSAdapter) Read(p []byte) (int, error) {
-	_, msg, err := ws.Conn.ReadMessage()
-	return copy(p, msg), err
-}
-
-func (ws *GorillaWSAdapter) Write(p []byte) (int, error) {
-	return len(p), ws.Conn.WriteMessage(websocket.TextMessage, p)
-}
-
-func (ws *GorillaWSAdapter) Close() error {
-	return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-}
+const busAddr = "localhost:4242"
 
 func fatal(err error) {
 	if err != nil {
@@ -47,15 +17,30 @@ func fatal(err error) {
 }
 
 func main() {
-	url := "ws://localhost:8000/"
-	ws, _, err := websocket.DefaultDialer.Dial(url, nil)
-	fatal(err)
-	peer, err := rpc.Handshake(&GorillaWSAdapter{ws})
-	fatal(err)
-	defer peer.Close()
+	// define api
+	api := qrpc.NewAPI()
+	api.HandleFunc("echo", func(r qrpc.Responder, c *qrpc.Call) {
+		var msg string
+		err := c.Decode(&msg)
+		if err != nil {
+			r.Return(err)
+			return
+		}
+		log.Println("got echo")
+		r.Return(msg)
+	})
 
-	fatal(peer.Call("register", []string{"echo2"}, nil))
+	// connect backend to bus
+	sess, err := transport.DialTCP(busAddr)
+	if err != nil {
+		panic(err)
+	}
+	backend := &qrpc.Client{Session: sess, API: api}
+	err = backend.Call("register", []string{"echo"}, nil)
+	if err != nil {
+		panic(err)
+	}
 
-	fmt.Println("routing...")
-	peer.Route()
+	fmt.Println("serving...")
+	backend.ServeAPI()
 }

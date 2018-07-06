@@ -1,14 +1,14 @@
 
 import * as msgpack from "msgpack-lite";
 
-interface ISession {
-	open(): Promise<IChannel>;
-	accept(): Promise<IChannel>;
+interface Session {
+	open(): Promise<Channel>;
+	accept(): Promise<Channel>;
     close(): Promise<void>;
     // wait(): Promise<void>;
 }
 
-interface IChannel {
+interface Channel {
 	recv(): Promise<Uint8Array>;
 	send(buffer: Uint8Array): Promise<number>;
 	close(): Promise<void>;
@@ -37,7 +37,7 @@ export class API {
         })
     }
 
-    async serve(session: ISession, ch: IChannel): Promise<void> {
+    async serve(session: Session, ch: Channel): Promise<void> {
         var buf = await ch.recv();
         var call = msgpack.decode(buf);
 	    //call.parse()
@@ -63,9 +63,9 @@ interface Responder {
 
 class responder implements Responder {
     header: ResponseHeader;
-    ch: IChannel;
+    ch: Channel;
 
-    constructor(ch: IChannel, header: ResponseHeader) {
+    constructor(ch: Channel, header: ResponseHeader) {
         this.ch = ch;
         this.header = header;
     }
@@ -106,10 +106,10 @@ interface Handler {
 }
 
 export class Client implements Caller {
-    session: ISession;
+    session: Session;
     api: API;
 
-    constructor(session: ISession, api?: API) {
+    constructor(session: Session, api?: API) {
         this.session = session;
         this.api = api;
     }

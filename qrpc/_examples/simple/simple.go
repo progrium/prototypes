@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/progrium/prototypes/libmux/mux"
 	"github.com/progrium/prototypes/qrpc"
-	"github.com/progrium/prototypes/qrpc/transport"
 )
 
 const addr = "localhost:4242"
@@ -25,7 +25,7 @@ func main() {
 
 	// start server with api
 	server := &qrpc.Server{}
-	l, err := transport.ListenTCP(addr)
+	l, err := mux.ListenTCP(addr)
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +34,7 @@ func main() {
 	}()
 
 	// connect client to server, call echo
-	sess, err := transport.DialTCP(addr)
+	sess, err := mux.DialTCP(addr)
 	if err != nil {
 		panic(err)
 	}

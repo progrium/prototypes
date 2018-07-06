@@ -11,8 +11,8 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/progrium/prototypes/libmux/mux"
 	"github.com/progrium/prototypes/qrpc"
-	"github.com/progrium/prototypes/qrpc/transport"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -41,6 +41,10 @@ func (_ *PeopleService) MakePerson(name string) {
 
 }
 
+func (_ *PeopleService) Echo(msg string) string {
+	return msg
+}
+
 func main() {
 	api := qrpc.NewAPI()
 	handler, err := qrpc.Export(&PeopleService{})
@@ -50,10 +54,11 @@ func main() {
 	api.Handle("demo", handler)
 
 	// server
-	//l, err := transport.ListenSSH(addr, generateSSHServerConfig())
-	//l, err := transport.ListenQuic(addr, generateTLSConfig(), nil)
-	//l, err := transport.ListenMuxado(addr, nil)
-	l, err := transport.ListenTCP(addr)
+	//l, err := mux.ListenSSH(addr, generateSSHServerConfig())
+	//l, err := mux.ListenQuic(addr, generateTLSConfig(), nil)
+	//l, err := mux.ListenMuxado(addr, nil)
+	//l, err := mux.ListenTCP(addr)
+	l, err := mux.ListenWebsocket(addr)
 	if err != nil {
 		panic(err)
 	}
@@ -64,10 +69,11 @@ func main() {
 	}()
 
 	// client
-	//sess, err := transport.DialSSH(addr, generateSSHClientConfig())
-	//sess, err := transport.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
-	//sess, err := transport.DialMuxado(addr, nil)
-	sess, err := transport.DialTCP(addr)
+	//sess, err := mux.DialSSH(addr, generateSSHClientConfig())
+	//sess, err := mux.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
+	//sess, err := mux.DialMuxado(addr, nil)
+	//sess, err := mux.DialTCP(addr)
+	sess, err := mux.DialWebsocket(addr)
 	if err != nil {
 		panic(err)
 	}
