@@ -1,18 +1,68 @@
-
+import * as chan from "@nodeguy/channel";
 import * as msgpack from "msgpack-lite";
 
 interface Session {
 	open(): Promise<Channel>;
 	accept(): Promise<Channel>;
     close(): Promise<void>;
-    // wait(): Promise<void>;
 }
 
 interface Channel {
-	recv(): Promise<Uint8Array>;
-	send(buffer: Uint8Array): Promise<number>;
+	read(len: number): Promise<Buffer>;
+	write(buffer: Buffer): Promise<number>;
 	close(): Promise<void>;
-	closeWrite(): Promise<void>;
+}
+
+interface Codec {
+    decode(): Promise<any>;
+    encode(v: any): Promise<void>;
+}
+
+function errable(p: Promise<any>): Promise<any> {
+    return p
+        .then(ret => [ret, null])
+        .catch(err => [null, err]);
+}
+
+class MsgpackCodec {
+    channel: Channel;
+    decoder: any;
+    objChan: any;
+
+    constructor(channel: Channel) {
+        this.channel = channel;
+        this.decoder = msgpack.createDecodeStream();
+        var ch = chan();
+        this.decoder.on("data", (obj) => {
+            ch.push(obj);
+        })
+        this.objChan = ch;
+        this.readLoop();
+    }
+
+    async readLoop() {
+        while(true) {
+            try {
+                var buf = await this.channel.read(1 << 16);
+                if (buf === undefined) {
+                    this.decoder.end();
+                    return;
+                }
+                this.decoder.write(buf);
+            } catch (e) {
+                throw "codec readLoop: "+e;
+            }
+        }
+    }
+
+    async encode(v: any): Promise<void> {
+        await this.channel.write(msgpack.encode(v));
+        return Promise.resolve();
+    }
+
+    decode(): Promise<any> {
+        return this.objChan.shift();
+    }
 }
 
 export class Error {
@@ -38,13 +88,10 @@ export class API {
     }
 
     async serve(session: Session, ch: Channel): Promise<void> {
-        var buf = await ch.recv();
-        var call = msgpack.decode(buf);
+        var codec = new MsgpackCodec(ch);
+        var call = await codec.decode();
 	    //call.parse()
-        call.decode = async (): Promise<any> => {
-            var buf = await ch.recv();
-            return Promise.resolve(msgpack.decode(buf));
-        };
+        call.decode = codec.decode;
         call.Caller = new Client(session);
 	    var header = new ResponseHeader();
         var resp = new responder(ch, header);
@@ -75,8 +122,9 @@ class responder implements Responder {
             this.header.Error = v.message;
             v = null;
         }
-        await this.ch.send(msgpack.encode(this.header));
-        await this.ch.send(msgpack.encode(v));
+        var codec = new MsgpackCodec(this.ch);
+        await codec.encode(this.header);
+        await codec.encode(v);
         return this.ch.close();
     }
 }
@@ -130,15 +178,16 @@ export class Client implements Caller {
 
     async call(path: string, args: any): Promise<any> {
         var ch = await this.session.open();
-        await ch.send(msgpack.encode(new Call(path)));
-        await ch.send(msgpack.encode(args));
-        var buf = await ch.recv();
-        let resp: ResponseHeader = msgpack.decode(buf);
+        var codec = new MsgpackCodec(ch);
+        await codec.encode(new Call(path));
+        await codec.encode(args);
+
+        var resp: ResponseHeader = await codec.decode();
         if (resp.Error !== null) {
-            throw resp.Error
+            throw resp.Error;
         }
-        buf = await ch.recv();
-        ch.close();
-        return msgpack.decode(buf);
+        var ret = await codec.decode(); 
+        await ch.close();
+        return Promise.resolve(ret);
     }
 }

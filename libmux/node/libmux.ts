@@ -17,8 +17,8 @@ function goStr(str: string): any {
     return s;
 }
 
-var libmux = ffi.Library("../libmux", {
-  Error: [GoString, ["int"]],
+var libmux = ffi.Library(__dirname + "/../libmux", {
+  Error: ["int", ["int", ByteArray, "int"]],
 
   DialTCP: ["int", [GoString]],
   ListenTCP: ["int", [GoString]],
@@ -38,6 +38,12 @@ var libmux = ffi.Library("../libmux", {
   ChannelClose: ["int", ["int"]],
 });
 
+function lookupErr(id: number): string {
+  var buf = ByteArray(1<<8);
+  var n = libmux.Error(id, buf, 1<<8);
+  return buf.buffer.slice(0,n).toString('ascii');
+}
+
 export function ListenTCP(addr: string): Promise<Listener> {
   return new Promise((resolve, reject) => {
     libmux.ListenTCP.async(goStr(addr), (err, ret) => {
@@ -46,7 +52,7 @@ export function ListenTCP(addr: string): Promise<Listener> {
         return;
       }
       if (ret < 0) {
-        reject(libmux.Error(ret).p);
+        reject(lookupErr(ret));
         return;
       }
       if (ret === 0) {
@@ -66,7 +72,7 @@ export function DialTCP(addr: string): Promise<Session> {
         return;
       }
       if (ret < 0) {
-        reject(libmux.Error(ret).p);
+        reject(lookupErr(ret));
         return;
       }
       if (ret === 0) {
@@ -88,7 +94,7 @@ class Listener {
     });
   }
 
-  Accept(): Promise<Session> {
+  accept(): Promise<Session> {
     return new Promise((resolve, reject) => {
       libmux.ListenerAccept.async(this.id, (err, ret) => {
         if (err) {
@@ -96,7 +102,7 @@ class Listener {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject(lookupErr(ret));
           return;
         }
         if (ret === 0) {
@@ -108,7 +114,7 @@ class Listener {
     });
   }
 
-  Close(): Promise<void> {
+  close(): Promise<void> {
     return new Promise((resolve, reject) => {
       libmux.ListenerClose.async(this.id, (err, ret) => {
         if (err) {
@@ -116,7 +122,7 @@ class Listener {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject(lookupErr(ret));
           return;
         }
         resolve();
@@ -132,7 +138,7 @@ class Session {
     this.id = id;
   }
 
-  Open(): Promise<Channel> {
+  open(): Promise<Channel> {
     return new Promise((resolve, reject) => {
       libmux.SessionOpen.async(this.id, (err, ret) => {
         if (err) {
@@ -140,7 +146,7 @@ class Session {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject(lookupErr(ret));
           return;
         }
         if (ret === 0) {
@@ -152,7 +158,7 @@ class Session {
     });
   }
 
-  Accept(): Promise<Channel> {
+  accept(): Promise<Channel> {
     return new Promise((resolve, reject) => {
       libmux.SessionAccept.async(this.id, (err, ret) => {
         if (err) {
@@ -160,7 +166,7 @@ class Session {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject(lookupErr(ret));
           return;
         }
         if (ret === 0) {
@@ -172,7 +178,7 @@ class Session {
     });
   }
 
-  Close(): Promise<void> {
+  close(): Promise<void> {
     return new Promise((resolve, reject) => {
       libmux.SessionClose.async(this.id, (err, ret) => {
         if (err) {
@@ -180,7 +186,7 @@ class Session {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject(lookupErr(ret));
           return;
         }
         resolve();
@@ -196,7 +202,7 @@ class Channel {
     this.id = id;
   }
 
-  Read(len: number): Promise<Buffer> {
+  read(len: number): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       var buffer = ByteArray(len);
       libmux.ChannelRead.async(this.id, buffer, buffer.length, (err, ret) => {
@@ -205,15 +211,19 @@ class Channel {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject("ERR"+lookupErr(ret));
           return;
         }
-        resolve(buffer.buffer);
+        if (ret === 0) {
+          resolve();
+          return;
+        }
+        resolve(buffer.buffer.slice(0, ret));
       })
     });
   }
 
-  Write(buf: Buffer): Promise<number> {
+  write(buf: Buffer): Promise<number> {
     return new Promise((resolve, reject) => {
       var buffer = ByteArray(buf);
       libmux.ChannelWrite.async(this.id, buffer, buffer.length, (err, ret) => {
@@ -222,7 +232,7 @@ class Channel {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject(lookupErr(ret));
           return;
         }
         resolve(ret);
@@ -230,7 +240,7 @@ class Channel {
     });
   }
 
-  Close(): Promise<void> {
+  close(): Promise<void> {
     return new Promise((resolve, reject) => {
       libmux.ChannelClose.async(this.id, (err, ret) => {
         if (err) {
@@ -238,7 +248,7 @@ class Channel {
           return;
         }
         if (ret < 0) {
-          reject(libmux.Error(ret).p);
+          reject(lookupErr(ret));
           return;
         }
         resolve();

@@ -3,7 +3,10 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"errors"
+	"io"
+	"log"
 	"sync"
 	"unsafe"
 
@@ -58,6 +61,7 @@ func (m *refmanager) StoreErr(err error) int {
 		}
 	}
 	m.values = append(m.values, err)
+	log.Println(err)
 	return len(m.values) * -1
 }
 
@@ -78,12 +82,14 @@ var errNoValue = errors.New("ref id has no value")
 var errType = errors.New("ref id has wrong type")
 
 //export Error
-func Error(id int) string {
+func Error(id int, buf *C.uchar, len int) int {
 	err := refs.Err(id)
 	if err == nil {
-		return ""
+		return 0
 	}
-	return err.Error()
+	errBuf := bytes.NewBufferString(err.Error())
+	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
+	return copy(b, errBuf.Bytes())
 }
 
 //export DialTCP
@@ -150,6 +156,9 @@ func ListenerAccept(id int) int {
 	}
 	sess, err := l.Accept()
 	if err != nil {
+		if err == io.EOF {
+			return 0
+		}
 		return refs.StoreErr(err)
 	}
 	return refs.StoreVal(sess)
@@ -166,6 +175,9 @@ func SessionClose(id int) int {
 		return refs.StoreErr(errType)
 	}
 	if err := sess.Close(); err != nil {
+		if err == io.EOF {
+			return 0
+		}
 		return refs.StoreErr(err)
 	}
 	return refs.ReleaseVal(id)
@@ -183,6 +195,9 @@ func SessionOpen(id int) int {
 	}
 	ch, err := l.Open()
 	if err != nil {
+		if err == io.EOF {
+			return 0
+		}
 		return refs.StoreErr(err)
 	}
 	return refs.StoreVal(ch)
@@ -200,6 +215,9 @@ func SessionAccept(id int) int {
 	}
 	ch, err := l.Accept()
 	if err != nil {
+		if err == io.EOF {
+			return 0
+		}
 		return refs.StoreErr(err)
 	}
 	return refs.StoreVal(ch)
@@ -216,6 +234,9 @@ func ChannelClose(id int) int {
 		return refs.StoreErr(errType)
 	}
 	if err := ch.Close(); err != nil {
+		if err == io.EOF {
+			return 0
+		}
 		return refs.StoreErr(err)
 	}
 	return refs.ReleaseVal(id)
@@ -234,6 +255,9 @@ func ChannelWrite(id int, buf *C.uchar, len int) int {
 	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
 	n, err := ch.Write(b)
 	if err != nil {
+		if err == io.EOF {
+			return 0
+		}
 		return refs.StoreErr(err)
 	}
 	return n
@@ -252,6 +276,9 @@ func ChannelRead(id int, buf *C.uchar, len int) int {
 	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
 	n, err := ch.Read(b)
 	if err != nil {
+		if err == io.EOF {
+			return 0
+		}
 		return refs.StoreErr(err)
 	}
 	return n
