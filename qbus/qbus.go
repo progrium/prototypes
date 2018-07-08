@@ -6,10 +6,10 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/progrium/prototypes/libmux/mux"
+	"github.com/progrium/prototypes/qbus/supervisor"
 	"github.com/progrium/prototypes/qrpc"
 	"github.com/progrium/prototypes/qrpc/bus"
-	"github.com/progrium/prototypes/qrpc/transport"
-	"github.com/progrium/prototypes/supervisor"
 )
 
 // toDO: rpcdaemon possible halts when reloading a program that exits
@@ -32,7 +32,7 @@ func triggerHook(name string, args ...string) {
 
 func main() {
 	server := &qrpc.Server{}
-	l, err := transport.ListenTCP(busAddr)
+	l, err := mux.ListenTCP(busAddr)
 	if err != nil {
 		panic(err)
 	}

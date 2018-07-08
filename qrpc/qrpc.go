@@ -365,7 +365,7 @@ func Export(v interface{}) (Handler, error) {
 type ObjectManager interface {
 	Register(v interface{}) ManagedObject
 	ServeRPC(r Responder, c *Call)
-	Export(api *API, path string)
+	Mount(api *API, path string)
 }
 
 type ManagedObject interface {

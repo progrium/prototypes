@@ -4,7 +4,7 @@ import "C"
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -54,32 +54,33 @@ func (m *refmanager) Val(id int) interface{} {
 func (m *refmanager) StoreErr(err error) int {
 	m.Lock()
 	defer m.Unlock()
+	defer log.Println(err)
 	for idx, vv := range m.values {
 		if vv == nil {
 			m.values[idx] = err
-			return (idx + 1) * -1
+			return idx + 1
 		}
 	}
 	m.values = append(m.values, err)
-	log.Println(err)
-	return len(m.values) * -1
+	return len(m.values)
 }
 
 func (m *refmanager) Err(id int) error {
 	m.Lock()
 	defer m.Unlock()
-	if (id*-1)-1 >= len(m.errors) || id > -1 {
+	if id-1 >= len(m.errors) || id < 1 {
+		log.Println("bad errid:", id)
 		return nil
 	}
-	err := m.errors[(id*-1)-1]
-	m.errors[(id*-1)-1] = nil
+	err := m.errors[id-1]
+	m.errors[id-1] = nil
 	return err
 }
 
 var refs = &refmanager{}
 
-var errNoValue = errors.New("ref id has no value")
-var errType = errors.New("ref id has wrong type")
+var errNoValueFmt = "%s id has no value"
+var errTypeFmt = "%s id has wrong type"
 
 //export Error
 func Error(id int, buf *C.uchar, len int) int {
@@ -132,11 +133,11 @@ func ListenWebsocket(addr string) int {
 func ListenerClose(id int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Listener"))
 	}
 	l, ok := r.(mux.Listener)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ListenerClose"))
 	}
 	if err := l.Close(); err != nil {
 		return refs.StoreErr(err)
@@ -148,11 +149,11 @@ func ListenerClose(id int) int {
 func ListenerAccept(id int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Listener"))
 	}
 	l, ok := r.(mux.Listener)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ListenerAccept"))
 	}
 	sess, err := l.Accept()
 	if err != nil {
@@ -168,11 +169,11 @@ func ListenerAccept(id int) int {
 func SessionClose(id int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Session"))
 	}
 	sess, ok := r.(mux.Session)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "SessionClose"))
 	}
 	if err := sess.Close(); err != nil {
 		if err == io.EOF {
@@ -187,11 +188,11 @@ func SessionClose(id int) int {
 func SessionOpen(id int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Session"))
 	}
 	l, ok := r.(mux.Session)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "SessionOpen"))
 	}
 	ch, err := l.Open()
 	if err != nil {
@@ -207,11 +208,11 @@ func SessionOpen(id int) int {
 func SessionAccept(id int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Session"))
 	}
 	l, ok := r.(mux.Session)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "SessionAccept"))
 	}
 	ch, err := l.Accept()
 	if err != nil {
@@ -227,11 +228,11 @@ func SessionAccept(id int) int {
 func ChannelClose(id int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Channel"))
 	}
 	ch, ok := r.(mux.Channel)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ChannelClose"))
 	}
 	if err := ch.Close(); err != nil {
 		if err == io.EOF {
@@ -246,11 +247,11 @@ func ChannelClose(id int) int {
 func ChannelWrite(id int, buf *C.uchar, len int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Channel"))
 	}
 	ch, ok := r.(mux.Channel)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ChannelWrite"))
 	}
 	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
 	n, err := ch.Write(b)
@@ -267,11 +268,11 @@ func ChannelWrite(id int, buf *C.uchar, len int) int {
 func ChannelRead(id int, buf *C.uchar, len int) int {
 	r := refs.Val(id)
 	if r == nil {
-		return refs.StoreErr(errNoValue)
+		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Channel"))
 	}
 	ch, ok := r.(mux.Channel)
 	if !ok {
-		return refs.StoreErr(errType)
+		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ChannelRead"))
 	}
 	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
 	n, err := ch.Read(b)

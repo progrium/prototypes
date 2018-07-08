@@ -7,6 +7,11 @@ interface Session {
     close(): Promise<void>;
 }
 
+interface Listener {
+    accept(): Promise<Session>;
+    close(): Promise<void>;
+}
+
 interface Channel {
 	read(len: number): Promise<Buffer>;
 	write(buffer: Buffer): Promise<number>;
@@ -24,6 +29,11 @@ function errable(p: Promise<any>): Promise<any> {
         .catch(err => [null, err]);
 }
 
+function sleep(ms: number): Promise<void> {
+    return new Promise(res => setTimeout(res, ms));
+}
+
+// only one codec per channel because of read loop!
 class MsgpackCodec {
     channel: Channel;
     decoder: any;
@@ -45,10 +55,12 @@ class MsgpackCodec {
             try {
                 var buf = await this.channel.read(1 << 16);
                 if (buf === undefined) {
-                    this.decoder.end();
                     return;
                 }
                 this.decoder.write(buf);
+                console.log("codec readloop");
+                console.log(buf);
+                await sleep(500);
             } catch (e) {
                 throw "codec readLoop: "+e;
             }
@@ -73,7 +85,11 @@ export class Error {
 }
 
 export class API {
-    handlers: { [key:string]:Handler; }
+    handlers: { [key:string]:Handler; };
+
+    constructor() {
+        this.handlers = {};
+    }
 
     handle(path: string, handler: Handler): void {
         this.handlers[path] = handler;
@@ -81,25 +97,38 @@ export class API {
 
     handleFunc(path: string, handler: (r: Responder, c: Call) => void): void {
         this.handle(path, {
-            serveRPC: (rr: Responder, cc: Call) => {
-                handler(rr, cc);
+            serveRPC: async (rr: Responder, cc: Call) => {
+                await handler(rr, cc);
             }
         })
     }
 
-    async serve(session: Session, ch: Channel): Promise<void> {
-        var codec = new MsgpackCodec(ch);
-        var call = await codec.decode();
-	    //call.parse()
-        call.decode = codec.decode;
-        call.Caller = new Client(session);
-	    var header = new ResponseHeader();
-        var resp = new responder(ch, header);
-        if (!this.handlers.hasOwnProperty(call.Destination)) {
-            resp.return(new Error("handler does not exist for this destination"));
+    handler(path: string): Handler {
+        for (var p in this.handlers) {
+            if (this.handlers.hasOwnProperty(p)) {
+                if (path.startsWith(p)) {
+                    return this.handlers[p];
+                }
+            }
         }
-	    this.handlers[call.Destination].serveRPC(resp, call);
-        return Promise.resolve(undefined);
+    }
+
+    async serveAPI(session: Session, ch: Channel): Promise<void> {
+        var codec = new MsgpackCodec(ch);
+        var cdata = await codec.decode();
+        var call = new Call(cdata.Destination);
+	    call.parse();
+        call.decode = codec.decode;
+        call.caller = new Client(session);
+	    var header = new ResponseHeader();
+        var resp = new responder(ch, codec, header);
+        var handler = this.handler(call.Destination);
+        if (!handler) {
+            resp.return(new Error("handler does not exist for this destination"));
+            return;
+        }
+        await handler.serveRPC(resp, call);
+        return Promise.resolve();
     }
 }
 
@@ -111,9 +140,11 @@ interface Responder {
 class responder implements Responder {
     header: ResponseHeader;
     ch: Channel;
+    codec: Codec;
 
-    constructor(ch: Channel, header: ResponseHeader) {
+    constructor(ch: Channel, codec: Codec, header: ResponseHeader) {
         this.ch = ch;
+        this.codec = codec;
         this.header = header;
     }
 
@@ -122,9 +153,8 @@ class responder implements Responder {
             this.header.Error = v.message;
             v = null;
         }
-        var codec = new MsgpackCodec(this.ch);
-        await codec.encode(this.header);
-        await codec.encode(v);
+        await this.codec.encode(this.header);
+        await this.codec.encode(v);
         return this.ch.close();
     }
 }
@@ -147,6 +177,10 @@ class Call {
     constructor(Destination: string) {
         this.Destination = Destination;
     }
+
+    parse() {
+        // TODO
+    }
 }
 
 interface Handler {
@@ -168,7 +202,12 @@ export class Client implements Caller {
         }
         while (true) {
             var ch = await this.session.accept();
-            this.api.serve(this.session, ch)
+            if (ch === undefined) {
+                return;
+            }
+            this.api.serveAPI(this.session, ch)
+            console.log("client serveAPI");
+            await sleep(500);
         }
     }
 
@@ -189,5 +228,39 @@ export class Client implements Caller {
         var ret = await codec.decode(); 
         await ch.close();
         return Promise.resolve(ret);
+    }
+}
+
+export class Server {
+    API: API;
+    
+    async serveAPI(sess: Session) {
+        while (true) {
+            var ch = await sess.accept();
+            if (ch === undefined) {
+                return;
+            }
+            this.API.serveAPI(sess, ch);
+            console.log("server serveAPI");
+            await sleep(500);
+        }
+    }
+
+    async serve(l: Listener, api?: API) {
+        if (!api) {
+            this.API = api;
+        }
+        if (!this.API) {
+            this.API = new API();
+        }
+        while (true) {
+            var sess = await l.accept();
+            if (sess === undefined) {
+                return;
+            }
+            this.serveAPI(sess);
+            console.log("server serve");
+            await sleep(500);
+        }
     }
 }

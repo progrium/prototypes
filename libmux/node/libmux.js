@@ -32,90 +32,103 @@ var libmux = ffi.Library(__dirname + "/../libmux", {
 });
 function lookupErr(id) {
     var buf = ByteArray(1 << 8);
-    var n = libmux.Error(id, buf, 1 << 8);
+    var n = libmux.Error(id * -1, buf, buf.length);
     return buf.buffer.slice(0, n).toString('ascii');
+}
+function handle(reject, name, retHandler) {
+    return function (err, retcode) {
+        if (err) {
+            reject("ffi: " + err);
+            return;
+        }
+        if (retcode < 0) {
+            reject(name + "[" + (retcode * -1) + "]: " + lookupErr(retcode));
+            return;
+        }
+        retHandler(retcode);
+    };
 }
 function ListenTCP(addr) {
     return new Promise(function (resolve, reject) {
-        libmux.ListenTCP.async(goStr(addr), function (err, ret) {
-            if (err) {
-                reject(err);
-                return;
-            }
-            if (ret < 0) {
-                reject(lookupErr(ret));
-                return;
-            }
-            if (ret === 0) {
+        libmux.ListenTCP.async(goStr(addr), handle(reject, "ListenTCP", function (retcode) {
+            if (retcode === 0) {
                 resolve();
                 return;
             }
-            resolve(new Listener(ret));
-        });
+            resolve(new Listener(retcode));
+        }));
     });
 }
 exports.ListenTCP = ListenTCP;
 function DialTCP(addr) {
     return new Promise(function (resolve, reject) {
-        libmux.DialTCP.async(goStr(addr), function (err, ret) {
-            if (err) {
-                reject(err);
-                return;
-            }
-            if (ret < 0) {
-                reject(lookupErr(ret));
-                return;
-            }
-            if (ret === 0) {
+        libmux.DialTCP.async(goStr(addr), handle(reject, "DialTCP", function (retcode) {
+            if (retcode === 0) {
                 resolve();
                 return;
             }
-            resolve(new Session(ret));
-        });
+            resolve(new Session(retcode));
+        }));
     });
 }
 exports.DialTCP = DialTCP;
+function ListenWebsocket(addr) {
+    return new Promise(function (resolve, reject) {
+        libmux.ListenWebsocket.async(goStr(addr), handle(reject, "ListenWebsocket", function (retcode) {
+            if (retcode === 0) {
+                resolve();
+                return;
+            }
+            resolve(new Listener(retcode));
+        }));
+    });
+}
+exports.ListenWebsocket = ListenWebsocket;
+function DialWebsocket(addr) {
+    return new Promise(function (resolve, reject) {
+        libmux.DialWebsocket.async(goStr(addr), handle(reject, "DialWebsocket", function (retcode) {
+            if (retcode === 0) {
+                resolve();
+                return;
+            }
+            resolve(new Session(retcode));
+        }));
+    });
+}
+exports.DialWebsocket = DialWebsocket;
 var Listener = /** @class */ (function () {
     function Listener(id) {
+        var _this = this;
         this.id = id;
+        this.closed = false;
         process.once('SIGINT', function (code) {
-            libmux.ListenerClose(id);
+            if (!_this.closed)
+                libmux.ListenerClose(id);
         });
     }
     Listener.prototype.accept = function () {
         var _this = this;
+        if (this.closed)
+            return new Promise(function (r) { return r(); });
         return new Promise(function (resolve, reject) {
-            libmux.ListenerAccept.async(_this.id, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject(lookupErr(ret));
-                    return;
-                }
-                if (ret === 0) {
+            libmux.ListenerAccept.async(_this.id, handle(reject, "ListenerAccept", function (retcode) {
+                if (retcode === 0) {
                     resolve();
                     return;
                 }
-                resolve(new Session(ret));
-            });
+                resolve(new Session(retcode));
+            }));
         });
     };
     Listener.prototype.close = function () {
         var _this = this;
+        if (this.closed)
+            return Promise.resolve();
         return new Promise(function (resolve, reject) {
-            libmux.ListenerClose.async(_this.id, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject(lookupErr(ret));
-                    return;
-                }
+            libmux.ListenerClose.async(_this.id, handle(reject, "ListenerClose", function () {
+                _this.closed = true;
                 resolve();
-            });
+            }));
         });
     };
     return Listener;
@@ -123,61 +136,45 @@ var Listener = /** @class */ (function () {
 var Session = /** @class */ (function () {
     function Session(id) {
         this.id = id;
+        this.closed = false;
     }
     Session.prototype.open = function () {
         var _this = this;
+        if (this.closed)
+            return new Promise(function (r) { return r(); });
         return new Promise(function (resolve, reject) {
-            libmux.SessionOpen.async(_this.id, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject(lookupErr(ret));
-                    return;
-                }
-                if (ret === 0) {
+            libmux.SessionOpen.async(_this.id, handle(reject, "SessionOpen", function (retcode) {
+                if (retcode === 0) {
                     resolve();
                     return;
                 }
-                resolve(new Channel(ret));
-            });
+                resolve(new Channel(retcode));
+            }));
         });
     };
     Session.prototype.accept = function () {
         var _this = this;
+        if (this.closed)
+            return new Promise(function (r) { return r(); });
         return new Promise(function (resolve, reject) {
-            libmux.SessionAccept.async(_this.id, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject(lookupErr(ret));
-                    return;
-                }
-                if (ret === 0) {
+            libmux.SessionAccept.async(_this.id, handle(reject, "SessionAccept", function (retcode) {
+                if (retcode === 0) {
                     resolve();
                     return;
                 }
-                resolve(new Channel(ret));
-            });
+                resolve(new Channel(retcode));
+            }));
         });
     };
     Session.prototype.close = function () {
         var _this = this;
+        if (this.closed)
+            return Promise.resolve();
         return new Promise(function (resolve, reject) {
-            libmux.SessionClose.async(_this.id, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject(lookupErr(ret));
-                    return;
-                }
+            libmux.SessionClose.async(_this.id, handle(reject, "SessionClose", function () {
+                _this.closed = true;
                 resolve();
-            });
+            }));
         });
     };
     return Session;
@@ -185,59 +182,42 @@ var Session = /** @class */ (function () {
 var Channel = /** @class */ (function () {
     function Channel(id) {
         this.id = id;
+        this.closed = false;
     }
     Channel.prototype.read = function (len) {
         var _this = this;
+        if (this.closed)
+            return new Promise(function (r) { return r(); });
         return new Promise(function (resolve, reject) {
             var buffer = ByteArray(len);
-            libmux.ChannelRead.async(_this.id, buffer, buffer.length, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject("ERR" + lookupErr(ret));
-                    return;
-                }
-                if (ret === 0) {
+            libmux.ChannelRead.async(_this.id, buffer, buffer.length, handle(reject, "ChannelRead", function (retcode) {
+                if (retcode === 0) {
+                    _this.closed = true;
                     resolve();
                     return;
                 }
-                resolve(buffer.buffer.slice(0, ret));
-            });
+                resolve(buffer.buffer.slice(0, retcode));
+            }));
         });
     };
     Channel.prototype.write = function (buf) {
         var _this = this;
+        if (this.closed)
+            return new Promise(function (r) { return r(); });
         return new Promise(function (resolve, reject) {
             var buffer = ByteArray(buf);
-            libmux.ChannelWrite.async(_this.id, buffer, buffer.length, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject(lookupErr(ret));
-                    return;
-                }
-                resolve(ret);
-            });
+            libmux.ChannelWrite.async(_this.id, buffer, buffer.length, handle(reject, "ChannelWrite", function (retcode) { return resolve(retcode); }));
         });
     };
     Channel.prototype.close = function () {
         var _this = this;
+        if (this.closed)
+            return Promise.resolve();
         return new Promise(function (resolve, reject) {
-            libmux.ChannelClose.async(_this.id, function (err, ret) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                if (ret < 0) {
-                    reject(lookupErr(ret));
-                    return;
-                }
+            libmux.ChannelClose.async(_this.id, handle(reject, "ChannelClose", function () {
+                _this.closed = true;
                 resolve();
-            });
+            }));
         });
     };
     return Channel;

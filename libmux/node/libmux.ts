@@ -3,6 +3,7 @@ import * as ref from "ref";
 
 import * as ArrayType from "ref-array";
 import * as Struct from "ref-struct";
+import { PerformanceObserver } from "perf_hooks";
 
 let ByteArray = ArrayType(ref.types.uint8);
 let GoString = Struct({
@@ -40,219 +41,194 @@ var libmux = ffi.Library(__dirname + "/../libmux", {
 
 function lookupErr(id: number): string {
   var buf = ByteArray(1<<8);
-  var n = libmux.Error(id, buf, 1<<8);
+  var n = libmux.Error(id*-1, buf, buf.length);
   return buf.buffer.slice(0,n).toString('ascii');
+}
+
+function handle(reject, name, retHandler) {
+  return (err, retcode) => {
+    if (err) {
+      reject("ffi: "+err);
+      return;
+    }
+    if (retcode < 0) {
+      reject(name+"["+(retcode*-1)+"]: "+lookupErr(retcode));
+      return;
+    }
+    retHandler(retcode);
+  };
 }
 
 export function ListenTCP(addr: string): Promise<Listener> {
   return new Promise((resolve, reject) => {
-    libmux.ListenTCP.async(goStr(addr), (err, ret) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (ret < 0) {
-        reject(lookupErr(ret));
-        return;
-      }
-      if (ret === 0) {
+    libmux.ListenTCP.async(goStr(addr), handle(reject, "ListenTCP", (retcode) => {
+      if (retcode === 0) {
         resolve();
         return;
       }
-      resolve(new Listener(ret));
-    });
+      resolve(new Listener(retcode));
+    }));
   });
 }
 
 export function DialTCP(addr: string): Promise<Session> {
   return new Promise((resolve, reject) => {
-    libmux.DialTCP.async(goStr(addr), (err, ret) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (ret < 0) {
-        reject(lookupErr(ret));
-        return;
-      }
-      if (ret === 0) {
+    libmux.DialTCP.async(goStr(addr), handle(reject, "DialTCP", (retcode) => {
+      if (retcode === 0) {
         resolve();
         return;
       }
-      resolve(new Session(ret));
-    });
+      resolve(new Session(retcode));
+    }));
+  });
+}
+
+export function ListenWebsocket(addr: string): Promise<Listener> {
+  return new Promise((resolve, reject) => {
+    libmux.ListenWebsocket.async(goStr(addr), handle(reject, "ListenWebsocket", (retcode) => {
+      if (retcode === 0) {
+        resolve();
+        return;
+      }
+      resolve(new Listener(retcode));
+    }));
+  });
+}
+
+export function DialWebsocket(addr: string): Promise<Session> {
+  return new Promise((resolve, reject) => {
+    libmux.DialWebsocket.async(goStr(addr), handle(reject, "DialWebsocket", (retcode) => {
+      if (retcode === 0) {
+        resolve();
+        return;
+      }
+      resolve(new Session(retcode));
+    }));
   });
 }
 
 class Listener {
   id: number;
+  closed: boolean;
 
   constructor(id: number) {
     this.id = id;
-    process.once('SIGINT', function (code) {
-      libmux.ListenerClose(id);
+    this.closed = false;
+    process.once('SIGINT', (code) => {
+      if (!this.closed) 
+        libmux.ListenerClose(id);
     });
   }
 
   accept(): Promise<Session> {
+    if (this.closed) return new Promise(r => r());
     return new Promise((resolve, reject) => {
-      libmux.ListenerAccept.async(this.id, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject(lookupErr(ret));
-          return;
-        }
-        if (ret === 0) {
+      libmux.ListenerAccept.async(this.id, handle(reject, "ListenerAccept", (retcode) => {
+        if (retcode === 0) {
           resolve();
           return;
         }
-        resolve(new Session(ret));
-      });
+        resolve(new Session(retcode));
+      }));
     });
   }
 
   close(): Promise<void> {
+    if (this.closed) return Promise.resolve();
     return new Promise((resolve, reject) => {
-      libmux.ListenerClose.async(this.id, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject(lookupErr(ret));
-          return;
-        }
+      libmux.ListenerClose.async(this.id, handle(reject, "ListenerClose", () => {
+        this.closed = true;
         resolve();
-      });
+      }));
     });
   }
 }
 
 class Session {
   id: number;
+  closed: boolean;
 
   constructor(id: number) {
     this.id = id;
+    this.closed = false;
   }
 
   open(): Promise<Channel> {
+    if (this.closed) return new Promise(r => r());
     return new Promise((resolve, reject) => {
-      libmux.SessionOpen.async(this.id, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject(lookupErr(ret));
-          return;
-        }
-        if (ret === 0) {
+      libmux.SessionOpen.async(this.id, handle(reject, "SessionOpen", (retcode) => {
+        if (retcode === 0) {
           resolve();
           return;
         }
-        resolve(new Channel(ret));
-      });
+        resolve(new Channel(retcode));
+      }));
     });
   }
 
   accept(): Promise<Channel> {
+    if (this.closed) return new Promise(r => r());
     return new Promise((resolve, reject) => {
-      libmux.SessionAccept.async(this.id, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject(lookupErr(ret));
-          return;
-        }
-        if (ret === 0) {
+      libmux.SessionAccept.async(this.id, handle(reject, "SessionAccept", (retcode) => {
+        if (retcode === 0) {
           resolve();
           return;
         }
-        resolve(new Channel(ret));
-      });
+        resolve(new Channel(retcode));
+      }));
     });
   }
 
   close(): Promise<void> {
+    if (this.closed) return Promise.resolve();
     return new Promise((resolve, reject) => {
-      libmux.SessionClose.async(this.id, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject(lookupErr(ret));
-          return;
-        }
+      libmux.SessionClose.async(this.id, handle(reject, "SessionClose", () => {
+        this.closed = true;
         resolve();
-      });
+      }));
     });
   }
 }
 
 class Channel {
   id: number;
+  closed: boolean;
 
   constructor(id: number) {
     this.id = id;
+    this.closed = false;
   }
 
   read(len: number): Promise<Buffer> {
+    if (this.closed) return new Promise(r => r());
     return new Promise((resolve, reject) => {
       var buffer = ByteArray(len);
-      libmux.ChannelRead.async(this.id, buffer, buffer.length, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject("ERR"+lookupErr(ret));
-          return;
-        }
-        if (ret === 0) {
+      libmux.ChannelRead.async(this.id, buffer, buffer.length, handle(reject, "ChannelRead", (retcode) => {
+        if (retcode === 0) {
+          this.closed = true;
           resolve();
           return;
         }
-        resolve(buffer.buffer.slice(0, ret));
-      })
+        resolve(buffer.buffer.slice(0, retcode));
+      }));
     });
   }
 
   write(buf: Buffer): Promise<number> {
+    if (this.closed) return new Promise(r => r());
     return new Promise((resolve, reject) => {
       var buffer = ByteArray(buf);
-      libmux.ChannelWrite.async(this.id, buffer, buffer.length, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject(lookupErr(ret));
-          return;
-        }
-        resolve(ret);
-      })
+      libmux.ChannelWrite.async(this.id, buffer, buffer.length, handle(reject, "ChannelWrite", (retcode) => resolve(retcode)));
     });
   }
 
   close(): Promise<void> {
+    if (this.closed) return Promise.resolve();
     return new Promise((resolve, reject) => {
-      libmux.ChannelClose.async(this.id, (err, ret) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (ret < 0) {
-          reject(lookupErr(ret));
-          return;
-        }
+      libmux.ChannelClose.async(this.id, handle(reject, "ChannelClose", () => {
+        this.closed = true;
         resolve();
-      });
+      }));
     });
   }
 }

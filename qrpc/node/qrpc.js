@@ -41,6 +41,10 @@ function errable(p) {
     return p
         .then(function (ret) { return [ret, null]; })["catch"](function (err) { return [null, err]; });
 }
+function sleep(ms) {
+    return new Promise(function (res) { return setTimeout(res, ms); });
+}
+// only one codec per channel because of read loop!
 var MsgpackCodec = /** @class */ (function () {
     function MsgpackCodec(channel) {
         this.channel = channel;
@@ -58,24 +62,28 @@ var MsgpackCodec = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!true) return [3 /*break*/, 5];
+                        if (!true) return [3 /*break*/, 6];
                         _a.label = 1;
                     case 1:
-                        _a.trys.push([1, 3, , 4]);
+                        _a.trys.push([1, 4, , 5]);
                         return [4 /*yield*/, this.channel.read(1 << 16)];
                     case 2:
                         buf = _a.sent();
                         if (buf === undefined) {
-                            this.decoder.end();
                             return [2 /*return*/];
                         }
                         this.decoder.write(buf);
-                        return [3 /*break*/, 4];
+                        console.log("codec readloop");
+                        console.log(buf);
+                        return [4 /*yield*/, sleep(500)];
                     case 3:
+                        _a.sent();
+                        return [3 /*break*/, 5];
+                    case 4:
                         e_1 = _a.sent();
                         throw "codec readLoop: " + e_1;
-                    case 4: return [3 /*break*/, 0];
-                    case 5: return [2 /*return*/];
+                    case 5: return [3 /*break*/, 0];
+                    case 6: return [2 /*return*/];
                 }
             });
         });
@@ -106,37 +114,60 @@ var Error = /** @class */ (function () {
 exports.Error = Error;
 var API = /** @class */ (function () {
     function API() {
+        this.handlers = {};
     }
     API.prototype.handle = function (path, handler) {
         this.handlers[path] = handler;
     };
     API.prototype.handleFunc = function (path, handler) {
+        var _this = this;
         this.handle(path, {
-            serveRPC: function (rr, cc) {
-                handler(rr, cc);
-            }
+            serveRPC: function (rr, cc) { return __awaiter(_this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, handler(rr, cc)];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/];
+                    }
+                });
+            }); }
         });
     };
-    API.prototype.serve = function (session, ch) {
+    API.prototype.handler = function (path) {
+        for (var p in this.handlers) {
+            if (this.handlers.hasOwnProperty(p)) {
+                if (path.startsWith(p)) {
+                    return this.handlers[p];
+                }
+            }
+        }
+    };
+    API.prototype.serveAPI = function (session, ch) {
         return __awaiter(this, void 0, void 0, function () {
-            var codec, call, header, resp;
+            var codec, cdata, call, header, resp, handler;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         codec = new MsgpackCodec(ch);
                         return [4 /*yield*/, codec.decode()];
                     case 1:
-                        call = _a.sent();
-                        //call.parse()
+                        cdata = _a.sent();
+                        call = new Call(cdata.Destination);
+                        call.parse();
                         call.decode = codec.decode;
-                        call.Caller = new Client(session);
+                        call.caller = new Client(session);
                         header = new ResponseHeader();
-                        resp = new responder(ch, header);
-                        if (!this.handlers.hasOwnProperty(call.Destination)) {
+                        resp = new responder(ch, codec, header);
+                        handler = this.handler(call.Destination);
+                        if (!handler) {
                             resp["return"](new Error("handler does not exist for this destination"));
+                            return [2 /*return*/];
                         }
-                        this.handlers[call.Destination].serveRPC(resp, call);
-                        return [2 /*return*/, Promise.resolve(undefined)];
+                        return [4 /*yield*/, handler.serveRPC(resp, call)];
+                    case 2:
+                        _a.sent();
+                        return [2 /*return*/, Promise.resolve()];
                 }
             });
         });
@@ -145,13 +176,13 @@ var API = /** @class */ (function () {
 }());
 exports.API = API;
 var responder = /** @class */ (function () {
-    function responder(ch, header) {
+    function responder(ch, codec, header) {
         this.ch = ch;
+        this.codec = codec;
         this.header = header;
     }
     responder.prototype["return"] = function (v) {
         return __awaiter(this, void 0, void 0, function () {
-            var codec;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -159,11 +190,10 @@ var responder = /** @class */ (function () {
                             this.header.Error = v.message;
                             v = null;
                         }
-                        codec = new MsgpackCodec(this.ch);
-                        return [4 /*yield*/, codec.encode(this.header)];
+                        return [4 /*yield*/, this.codec.encode(this.header)];
                     case 1:
                         _a.sent();
-                        return [4 /*yield*/, codec.encode(v)];
+                        return [4 /*yield*/, this.codec.encode(v)];
                     case 2:
                         _a.sent();
                         return [2 /*return*/, this.ch.close()];
@@ -182,6 +212,9 @@ var Call = /** @class */ (function () {
     function Call(Destination) {
         this.Destination = Destination;
     }
+    Call.prototype.parse = function () {
+        // TODO
+    };
     return Call;
 }());
 var Client = /** @class */ (function () {
@@ -200,13 +233,20 @@ var Client = /** @class */ (function () {
                         }
                         _a.label = 1;
                     case 1:
-                        if (!true) return [3 /*break*/, 3];
+                        if (!true) return [3 /*break*/, 4];
                         return [4 /*yield*/, this.session.accept()];
                     case 2:
                         ch = _a.sent();
-                        this.api.serve(this.session, ch);
+                        if (ch === undefined) {
+                            return [2 /*return*/];
+                        }
+                        this.api.serveAPI(this.session, ch);
+                        console.log("client serveAPI");
+                        return [4 /*yield*/, sleep(500)];
+                    case 3:
+                        _a.sent();
                         return [3 /*break*/, 1];
-                    case 3: return [2 /*return*/];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
@@ -249,3 +289,65 @@ var Client = /** @class */ (function () {
     return Client;
 }());
 exports.Client = Client;
+var Server = /** @class */ (function () {
+    function Server() {
+    }
+    Server.prototype.serveAPI = function (sess) {
+        return __awaiter(this, void 0, void 0, function () {
+            var ch;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!true) return [3 /*break*/, 3];
+                        return [4 /*yield*/, sess.accept()];
+                    case 1:
+                        ch = _a.sent();
+                        if (ch === undefined) {
+                            return [2 /*return*/];
+                        }
+                        this.API.serveAPI(sess, ch);
+                        console.log("server serveAPI");
+                        return [4 /*yield*/, sleep(500)];
+                    case 2:
+                        _a.sent();
+                        return [3 /*break*/, 0];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    Server.prototype.serve = function (l, api) {
+        return __awaiter(this, void 0, void 0, function () {
+            var sess;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!api) {
+                            this.API = api;
+                        }
+                        if (!this.API) {
+                            this.API = new API();
+                        }
+                        _a.label = 1;
+                    case 1:
+                        if (!true) return [3 /*break*/, 4];
+                        return [4 /*yield*/, l.accept()];
+                    case 2:
+                        sess = _a.sent();
+                        if (sess === undefined) {
+                            return [2 /*return*/];
+                        }
+                        this.serveAPI(sess);
+                        console.log("server serve");
+                        return [4 /*yield*/, sleep(500)];
+                    case 3:
+                        _a.sent();
+                        return [3 /*break*/, 1];
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    return Server;
+}());
+exports.Server = Server;
