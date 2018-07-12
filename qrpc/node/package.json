@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@nodeguy/channel": "^0.6.3",
+    "blocked-at": "^1.1.2",
     "msgpack-lite": "^0.1.26"
   },
   "devDependencies": {

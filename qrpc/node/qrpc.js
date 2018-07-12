@@ -35,7 +35,6 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-var chan = require("@nodeguy/channel");
 var msgpack = require("msgpack-lite");
 function errable(p) {
     return p
@@ -44,74 +43,96 @@ function errable(p) {
 function sleep(ms) {
     return new Promise(function (res) { return setTimeout(res, ms); });
 }
+function loopYield(name) {
+    //console.log(name);
+    return sleep(10);
+}
 // only one codec per channel because of read loop!
-var MsgpackCodec = /** @class */ (function () {
-    function MsgpackCodec(channel) {
+var FrameCodec = /** @class */ (function () {
+    function FrameCodec(channel) {
         this.channel = channel;
-        this.decoder = msgpack.createDecodeStream();
-        var ch = chan();
-        this.decoder.on("data", function (obj) {
-            ch.push(obj);
-        });
-        this.objChan = ch;
+        this.codec = msgpack;
+        this.buf = [];
+        this.waiters = [];
         this.readLoop();
     }
-    MsgpackCodec.prototype.readLoop = function () {
+    FrameCodec.prototype.readLoop = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var buf, e_1;
+            var sbuf, sdata, size, buf, v, e_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!true) return [3 /*break*/, 6];
+                        if (!true) return [3 /*break*/, 7];
                         _a.label = 1;
                     case 1:
-                        _a.trys.push([1, 4, , 5]);
-                        return [4 /*yield*/, this.channel.read(1 << 16)];
+                        _a.trys.push([1, 5, , 6]);
+                        return [4 /*yield*/, loopYield("readloop")];
                     case 2:
-                        buf = _a.sent();
-                        if (buf === undefined) {
+                        _a.sent();
+                        return [4 /*yield*/, this.channel.read(4)];
+                    case 3:
+                        sbuf = _a.sent();
+                        if (sbuf === undefined) {
+                            //console.log("DEBUG: readloop exited");
                             return [2 /*return*/];
                         }
-                        this.decoder.write(buf);
-                        console.log("codec readloop");
-                        console.log(buf);
-                        return [4 /*yield*/, sleep(500)];
-                    case 3:
-                        _a.sent();
-                        return [3 /*break*/, 5];
+                        sdata = new DataView(sbuf.buffer);
+                        size = sdata.getUint32(0);
+                        return [4 /*yield*/, this.channel.read(size)];
                     case 4:
+                        buf = _a.sent();
+                        if (buf === undefined) {
+                            //console.log("DEBUG: readloop exited");
+                            return [2 /*return*/];
+                        }
+                        v = this.codec.decode(buf);
+                        if (this.waiters.length > 0) {
+                            this.waiters.shift()(v);
+                            return [3 /*break*/, 0];
+                        }
+                        this.buf.push(v);
+                        return [3 /*break*/, 6];
+                    case 5:
                         e_1 = _a.sent();
-                        throw "codec readLoop: " + e_1;
-                    case 5: return [3 /*break*/, 0];
-                    case 6: return [2 /*return*/];
+                        throw new Error("codec readLoop: " + e_1);
+                    case 6: return [3 /*break*/, 0];
+                    case 7: return [2 /*return*/];
                 }
             });
         });
     };
-    MsgpackCodec.prototype.encode = function (v) {
+    FrameCodec.prototype.encode = function (v) {
         return __awaiter(this, void 0, void 0, function () {
+            var buf, sdata;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.channel.write(msgpack.encode(v))];
+                    case 0:
+                        buf = this.codec.encode(v);
+                        sdata = new DataView(new ArrayBuffer(4));
+                        sdata.setUint32(0, buf.length);
+                        return [4 /*yield*/, this.channel.write(Buffer.from(sdata.buffer))];
                     case 1:
+                        _a.sent();
+                        return [4 /*yield*/, this.channel.write(Buffer.from(buf))];
+                    case 2:
                         _a.sent();
                         return [2 /*return*/, Promise.resolve()];
                 }
             });
         });
     };
-    MsgpackCodec.prototype.decode = function () {
-        return this.objChan.shift();
+    FrameCodec.prototype.decode = function () {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            if (_this.buf.length > 0) {
+                resolve(_this.buf.shift());
+                return;
+            }
+            _this.waiters.push(resolve);
+        });
     };
-    return MsgpackCodec;
+    return FrameCodec;
 }());
-var Error = /** @class */ (function () {
-    function Error(message) {
-        this.message = message;
-    }
-    return Error;
-}());
-exports.Error = Error;
 var API = /** @class */ (function () {
     function API() {
         this.handlers = {};
@@ -149,19 +170,19 @@ var API = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        codec = new MsgpackCodec(ch);
+                        codec = new FrameCodec(ch);
                         return [4 /*yield*/, codec.decode()];
                     case 1:
                         cdata = _a.sent();
                         call = new Call(cdata.Destination);
                         call.parse();
-                        call.decode = codec.decode;
+                        call.decode = function () { return codec.decode(); };
                         call.caller = new Client(session);
                         header = new ResponseHeader();
                         resp = new responder(ch, codec, header);
                         handler = this.handler(call.Destination);
                         if (!handler) {
-                            resp["return"](new Error("handler does not exist for this destination"));
+                            resp["return"](new Error("handler does not exist for this destination: " + call.Destination));
                             return [2 /*return*/];
                         }
                         return [4 /*yield*/, handler.serveRPC(resp, call)];
@@ -213,7 +234,20 @@ var Call = /** @class */ (function () {
         this.Destination = Destination;
     }
     Call.prototype.parse = function () {
-        // TODO
+        if (this.Destination.length === 0) {
+            throw new Error("no destination specified");
+        }
+        if (this.Destination[0] == "/") {
+            this.Destination = this.Destination.substr(1);
+        }
+        var parts = this.Destination.split("/");
+        if (parts.length === 1) {
+            this.objectPath = "/";
+            this.method = parts[0];
+            return;
+        }
+        this.method = parts.pop();
+        this.objectPath = parts.join("/");
     };
     return Call;
 }());
@@ -241,8 +275,7 @@ var Client = /** @class */ (function () {
                             return [2 /*return*/];
                         }
                         this.api.serveAPI(this.session, ch);
-                        console.log("client serveAPI");
-                        return [4 /*yield*/, sleep(500)];
+                        return [4 /*yield*/, loopYield("client channel accept loop")];
                     case 3:
                         _a.sent();
                         return [3 /*break*/, 1];
@@ -262,7 +295,7 @@ var Client = /** @class */ (function () {
                     case 0: return [4 /*yield*/, this.session.open()];
                     case 1:
                         ch = _a.sent();
-                        codec = new MsgpackCodec(ch);
+                        codec = new FrameCodec(ch);
                         return [4 /*yield*/, codec.encode(new Call(path))];
                     case 2:
                         _a.sent();
@@ -272,8 +305,8 @@ var Client = /** @class */ (function () {
                         return [4 /*yield*/, codec.decode()];
                     case 4:
                         resp = _a.sent();
-                        if (resp.Error !== null) {
-                            throw resp.Error;
+                        if (resp.Error !== undefined && resp.Error !== null) {
+                            return [2 /*return*/, Promise.reject(resp.Error)];
                         }
                         return [4 /*yield*/, codec.decode()];
                     case 5:
@@ -303,11 +336,11 @@ var Server = /** @class */ (function () {
                     case 1:
                         ch = _a.sent();
                         if (ch === undefined) {
+                            sess.close();
                             return [2 /*return*/];
                         }
                         this.API.serveAPI(sess, ch);
-                        console.log("server serveAPI");
-                        return [4 /*yield*/, sleep(500)];
+                        return [4 /*yield*/, loopYield("server channel accept loop")];
                     case 2:
                         _a.sent();
                         return [3 /*break*/, 0];
@@ -322,7 +355,7 @@ var Server = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!api) {
+                        if (api) {
                             this.API = api;
                         }
                         if (!this.API) {
@@ -338,8 +371,7 @@ var Server = /** @class */ (function () {
                             return [2 /*return*/];
                         }
                         this.serveAPI(sess);
-                        console.log("server serve");
-                        return [4 /*yield*/, sleep(500)];
+                        return [4 /*yield*/, loopYield("server connection accept loop")];
                     case 3:
                         _a.sent();
                         return [3 /*break*/, 1];
@@ -351,3 +383,150 @@ var Server = /** @class */ (function () {
     return Server;
 }());
 exports.Server = Server;
+function exportFunc(fn, rcvr) {
+    return {
+        serveRPC: function (r, c) {
+            return __awaiter(this, void 0, void 0, function () {
+                var args, _a, _b, e_2;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
+                        case 0: return [4 /*yield*/, c.decode()];
+                        case 1:
+                            args = _c.sent();
+                            _c.label = 2;
+                        case 2:
+                            _c.trys.push([2, 4, , 5]);
+                            _b = (_a = r)["return"];
+                            return [4 /*yield*/, fn.apply(rcvr, [args])];
+                        case 3:
+                            _b.apply(_a, [_c.sent()]);
+                            return [3 /*break*/, 5];
+                        case 4:
+                            e_2 = _c.sent();
+                            switch (typeof e_2) {
+                                case 'string':
+                                    r["return"](new Error(e_2));
+                                case 'undefined':
+                                    r["return"](new Error("unknown error"));
+                                case 'object':
+                                    r["return"](new Error(e_2.message));
+                                default:
+                                    r["return"](new Error("unknown error: " + e_2));
+                            }
+                            return [3 /*break*/, 5];
+                        case 5: return [2 /*return*/];
+                    }
+                });
+            });
+        }
+    };
+}
+function Export(v) {
+    if (typeof v === 'function') {
+        return exportFunc(v, null);
+    }
+    if (typeof v != 'object') {
+        throw new Error("can only export functions and objects");
+    }
+    var handlers = {};
+    if (v.constructor.name === "Object") {
+        for (var key in v) {
+            if (v.hasOwnProperty(key) && typeof v[key] === 'function') {
+                handlers[key] = exportFunc(v[key], v);
+            }
+        }
+    }
+    else {
+        var props = Object.getOwnPropertyNames(Object.getPrototypeOf(v));
+        for (var idx in props) {
+            var propName = props[idx];
+            if (propName != "constructor" && typeof v[propName] === 'function') {
+                handlers[propName] = exportFunc(v[propName], v);
+            }
+        }
+    }
+    return {
+        serveRPC: function (r, c) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!handlers.hasOwnProperty(c.method)) {
+                                r["return"](new Error("method handler does not exist for this destination: " + c.method));
+                                return [2 /*return*/];
+                            }
+                            return [4 /*yield*/, handlers[c.method].serveRPC(r, c)];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/];
+                    }
+                });
+            });
+        }
+    };
+}
+exports.Export = Export;
+function uuid4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (cc) {
+        var rr = Math.random() * 16 | 0;
+        return (cc === 'x' ? rr : (rr & 0x3 | 0x8)).toString(16);
+    });
+}
+var ObjectManager = /** @class */ (function () {
+    function ObjectManager() {
+        this.values = {};
+        this.mountPath = "/";
+    }
+    ObjectManager.prototype.object = function (path) {
+        var id = path.replace(this.mountPath, "");
+        if (id[0] === "/") {
+            id = id.substr(1);
+        }
+        var v = this.values[id];
+        if (!v) {
+            return undefined;
+        }
+        return new ManagedObject(this, id, v);
+    };
+    ObjectManager.prototype.register = function (v) {
+        var id = uuid4();
+        this.values[id] = v;
+        return new ManagedObject(this, id, v);
+    };
+    ObjectManager.prototype.serveRPC = function (r, c) {
+        return __awaiter(this, void 0, void 0, function () {
+            var parts, id, v;
+            return __generator(this, function (_a) {
+                parts = c.objectPath.split("/");
+                id = parts.pop();
+                v = this.values[id];
+                if (!v) {
+                    r["return"](new Error("object not registered: " + c.objectPath));
+                    return [2 /*return*/];
+                }
+                Export(v).serveRPC(r, c);
+                return [2 /*return*/];
+            });
+        });
+    };
+    ObjectManager.prototype.mount = function (api, path) {
+        this.mountPath = path;
+        api.handle(path, this);
+    };
+    return ObjectManager;
+}());
+exports.ObjectManager = ObjectManager;
+var ManagedObject = /** @class */ (function () {
+    function ManagedObject(manager, id, value) {
+        this.manager = manager;
+        this.id = id;
+        this.value = value;
+    }
+    ManagedObject.prototype.dispose = function () {
+        delete this.manager.values[this.id];
+    };
+    ManagedObject.prototype.path = function () {
+        return [this.manager.mountPath, this.id].join("/");
+    };
+    return ManagedObject;
+}());

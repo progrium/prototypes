@@ -6,10 +6,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"flag"
 	"fmt"
 	"log"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/progrium/prototypes/libmux/mux"
 	"github.com/progrium/prototypes/qrpc"
@@ -27,31 +28,50 @@ func (p *Person) Name() string {
 	return p.name
 }
 
-func (p *Person) Age() int {
-	return p.age
+func (p *Person) Age() string {
+	return strconv.Itoa(p.age)
 }
 
 func (p *Person) IncrAge() {
 	p.age += 1
 }
 
-type PeopleService struct{}
+type PeopleService struct {
+	objs *qrpc.ObjectManager
+}
 
-func (_ *PeopleService) MakePerson(name string) {
+func (s *PeopleService) NewPerson(name string) qrpc.ObjectHandle {
+	obj := s.objs.Register(&Person{name: name, age: 30})
+	return obj.Handle()
+}
 
+func (s *PeopleService) Person(handle qrpc.ObjectHandle) string {
+	return fmt.Sprintf("%#v", s.objs.Object(handle.ObjectPath).Value())
 }
 
 func (_ *PeopleService) Echo(msg string) string {
 	return msg
 }
 
+// type ScheduleInput struct {
+// 	Interval int
+// 	Fn qrpc.ObjectHandle
+// }
+
+// func (_ *PeopleService) Schedule(o ScheduleInput, r qrpc.Responder, c *qrpc.Call) {
+
+// }
+
 func main() {
 	api := qrpc.NewAPI()
-	handler, err := qrpc.Export(&PeopleService{})
-	if err != nil {
-		panic(err)
+	objects := qrpc.NewObjectManager()
+	api.Handle("demo", qrpc.Must(qrpc.Export(&PeopleService{objects})))
+	objects.Mount(api, "objects")
+
+	cb := func(str string) string {
+		return strings.ToUpper(str)
 	}
-	api.Handle("demo", handler)
+	fmt.Println(objects.Register(cb).Path())
 
 	// server
 	//l, err := mux.ListenSSH(addr, generateSSHServerConfig())
@@ -64,33 +84,8 @@ func main() {
 	}
 
 	server := &qrpc.Server{}
-	go func() {
-		log.Fatal(server.Serve(l, api))
-	}()
-
-	// client
-	//sess, err := mux.DialSSH(addr, generateSSHClientConfig())
-	//sess, err := mux.DialQuic(addr, &tls.Config{InsecureSkipVerify: true}, nil)
-	//sess, err := mux.DialMuxado(addr, nil)
-	//sess, err := mux.DialTCP(addr)
-	sess, err := mux.DialWebsocket(addr)
-	if err != nil {
-		panic(err)
-	}
-	client := &qrpc.Client{
-		Session: sess,
-		API:     api,
-	}
-	go client.ServeAPI()
-
-	flag.Parse()
-
-	var resp string
-	err = client.Call(flag.Arg(0), "Hello", &resp)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("resp: %#v\n", resp)
+	log.Println("serving...")
+	log.Fatal(server.Serve(l, api))
 
 }
 

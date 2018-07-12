@@ -3,6 +3,7 @@ package mux
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 
@@ -30,17 +31,36 @@ func ListenWebsocket(addr string) (Listener, error) {
 		}),
 	}
 	go s.Serve(listener)
-	return &websocketListener{listener, sessCh}, err
+	return &websocketListener{
+		Listener: listener,
+		sessCh:   sessCh,
+	}, err
 }
 
 type websocketListener struct {
 	net.Listener
-	sessCh chan qmux.Session
+	sessCh  chan qmux.Session
+	closeCh chan bool
 }
 
 func (l *websocketListener) Accept() (Session, error) {
-	return &qmuxSession{
-		Session: <-l.sessCh,
-		ctx:     context.Background(),
-	}, nil
+	if l.closeCh == nil {
+		l.closeCh = make(chan bool, 1)
+	}
+	select {
+	case <-l.closeCh:
+		return nil, io.EOF
+	case sess := <-l.sessCh:
+		return &qmuxSession{
+			Session: sess,
+			ctx:     context.Background(),
+		}, nil
+	}
+}
+
+func (l *websocketListener) Close() error {
+	if l.closeCh != nil {
+		l.closeCh <- true
+	}
+	return l.Listener.Close()
 }

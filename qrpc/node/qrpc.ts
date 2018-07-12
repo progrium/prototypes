@@ -1,5 +1,5 @@
-import * as chan from "@nodeguy/channel";
 import * as msgpack from "msgpack-lite";
+import { decode } from "punycode";
 
 interface Session {
 	open(): Promise<Channel>;
@@ -19,9 +19,10 @@ interface Channel {
 }
 
 interface Codec {
-    decode(): Promise<any>;
-    encode(v: any): Promise<void>;
+    encode(v: any): Uint8Array
+    decode(buf: Uint8Array): any
 }
+
 
 function errable(p: Promise<any>): Promise<any> {
     return p
@@ -33,54 +34,71 @@ function sleep(ms: number): Promise<void> {
     return new Promise(res => setTimeout(res, ms));
 }
 
+function loopYield(name: string): Promise<void> {
+    //console.log(name);
+    return sleep(10);
+}
+
 // only one codec per channel because of read loop!
-class MsgpackCodec {
+class FrameCodec {
     channel: Channel;
-    decoder: any;
-    objChan: any;
+    codec: Codec;
+    buf: Array<any>;
+    waiters: Array<any>;
 
     constructor(channel: Channel) {
         this.channel = channel;
-        this.decoder = msgpack.createDecodeStream();
-        var ch = chan();
-        this.decoder.on("data", (obj) => {
-            ch.push(obj);
-        })
-        this.objChan = ch;
+        this.codec = msgpack;
+        this.buf = [];
+        this.waiters = [];
         this.readLoop();
     }
 
     async readLoop() {
         while(true) {
             try {
-                var buf = await this.channel.read(1 << 16);
-                if (buf === undefined) {
+                await loopYield("readloop");
+                var sbuf = await this.channel.read(4);
+                if (sbuf === undefined) {
+                    //console.log("DEBUG: readloop exited");
                     return;
                 }
-                this.decoder.write(buf);
-                console.log("codec readloop");
-                console.log(buf);
-                await sleep(500);
+                var sdata = new DataView(sbuf.buffer);
+			    var size = sdata.getUint32(0);
+                var buf = await this.channel.read(size);
+                if (buf === undefined) {
+                    //console.log("DEBUG: readloop exited");
+                    return;
+                }
+                var v = this.codec.decode(buf);
+                if (this.waiters.length > 0) {
+                    this.waiters.shift()(v);
+                    continue;
+                }
+                this.buf.push(v);
             } catch (e) {
-                throw "codec readLoop: "+e;
+                throw new Error("codec readLoop: "+e);
             }
         }
     }
 
     async encode(v: any): Promise<void> {
-        await this.channel.write(msgpack.encode(v));
+        var buf = this.codec.encode(v);
+        var sdata = new DataView(new ArrayBuffer(4));
+        sdata.setUint32(0, buf.length);
+        await this.channel.write(Buffer.from(sdata.buffer));
+        await this.channel.write(Buffer.from(buf));
         return Promise.resolve();
     }
 
     decode(): Promise<any> {
-        return this.objChan.shift();
-    }
-}
-
-export class Error {
-    message: string;
-    constructor(message: string) {
-        this.message = message;
+        return new Promise((resolve, reject) => {
+            if (this.buf.length > 0) {
+                resolve(this.buf.shift());
+                return;
+            }
+            this.waiters.push(resolve);
+        })
     }
 }
 
@@ -114,17 +132,17 @@ export class API {
     }
 
     async serveAPI(session: Session, ch: Channel): Promise<void> {
-        var codec = new MsgpackCodec(ch);
+        var codec = new FrameCodec(ch);
         var cdata = await codec.decode();
         var call = new Call(cdata.Destination);
 	    call.parse();
-        call.decode = codec.decode;
+        call.decode = () => codec.decode();
         call.caller = new Client(session);
 	    var header = new ResponseHeader();
         var resp = new responder(ch, codec, header);
         var handler = this.handler(call.Destination);
         if (!handler) {
-            resp.return(new Error("handler does not exist for this destination"));
+            resp.return(new Error("handler does not exist for this destination: "+call.Destination));
             return;
         }
         await handler.serveRPC(resp, call);
@@ -140,9 +158,9 @@ interface Responder {
 class responder implements Responder {
     header: ResponseHeader;
     ch: Channel;
-    codec: Codec;
+    codec: FrameCodec;
 
-    constructor(ch: Channel, codec: Codec, header: ResponseHeader) {
+    constructor(ch: Channel, codec: FrameCodec, header: ResponseHeader) {
         this.ch = ch;
         this.codec = codec;
         this.header = header;
@@ -179,7 +197,20 @@ class Call {
     }
 
     parse() {
-        // TODO
+        if (this.Destination.length === 0) {
+            throw new Error("no destination specified");
+        }
+        if (this.Destination[0] == "/") {
+            this.Destination = this.Destination.substr(1);
+        }
+        var parts = this.Destination.split("/");
+        if (parts.length === 1) {
+            this.objectPath = "/";
+            this.method = parts[0];
+            return;
+        }
+        this.method = parts.pop();
+        this.objectPath = parts.join("/");
     }
 }
 
@@ -206,8 +237,7 @@ export class Client implements Caller {
                 return;
             }
             this.api.serveAPI(this.session, ch)
-            console.log("client serveAPI");
-            await sleep(500);
+            await loopYield("client channel accept loop");
         }
     }
 
@@ -217,17 +247,18 @@ export class Client implements Caller {
 
     async call(path: string, args: any): Promise<any> {
         var ch = await this.session.open();
-        var codec = new MsgpackCodec(ch);
+        var codec = new FrameCodec(ch);
         await codec.encode(new Call(path));
         await codec.encode(args);
-
+    
         var resp: ResponseHeader = await codec.decode();
-        if (resp.Error !== null) {
-            throw resp.Error;
+        if (resp.Error !== undefined && resp.Error !== null) {
+            return Promise.reject(resp.Error);
         }
+        
         var ret = await codec.decode(); 
-        await ch.close();
-        return Promise.resolve(ret);
+        await ch.close();    
+        return Promise.resolve(ret);    
     }
 }
 
@@ -238,16 +269,16 @@ export class Server {
         while (true) {
             var ch = await sess.accept();
             if (ch === undefined) {
+                sess.close();
                 return;
             }
             this.API.serveAPI(sess, ch);
-            console.log("server serveAPI");
-            await sleep(500);
+            await loopYield("server channel accept loop");
         }
     }
 
     async serve(l: Listener, api?: API) {
-        if (!api) {
+        if (api) {
             this.API = api;
         }
         if (!this.API) {
@@ -259,8 +290,134 @@ export class Server {
                 return;
             }
             this.serveAPI(sess);
-            console.log("server serve");
-            await sleep(500);
+            await loopYield("server connection accept loop");
         }
+    }
+}
+
+function exportFunc(fn: Function, rcvr: any): Handler {
+    return {
+        serveRPC: async function(r: Responder, c: Call) {
+            var args = await c.decode();
+            try {
+                r.return(await fn.apply(rcvr, [args]));
+            } catch (e) {
+                switch (typeof e) {
+                    case 'string':
+                        r.return(new Error(e));
+                    case 'undefined':
+                        r.return(new Error("unknown error"));
+                    case 'object':
+                        r.return(new Error(e.message));
+                    default:
+                        r.return(new Error("unknown error: "+e));
+                  }
+            }
+            
+        }
+    };
+}
+
+export function Export(v: any): Handler {
+    if (typeof v === 'function') {
+        return exportFunc(v, null);
+    }
+    if (typeof v != 'object') {
+        throw new Error("can only export functions and objects");
+    }
+    var handlers = {};
+    if (v.constructor.name === "Object") {
+        for (var key in v) {
+            if (v.hasOwnProperty(key) && typeof v[key] === 'function') {
+                handlers[key] = exportFunc(v[key], v);
+            }
+        }
+    } else {
+        var props = Object.getOwnPropertyNames(Object.getPrototypeOf(v));
+        for (var idx in props) {
+            var propName = props[idx];
+            if (propName != "constructor" && typeof v[propName] === 'function') {
+                handlers[propName] = exportFunc(v[propName], v);
+            }
+        }
+    }
+    return {
+        serveRPC: async function(r: Responder, c: Call) {
+            if (!handlers.hasOwnProperty(c.method)) {
+                r.return(new Error("method handler does not exist for this destination: "+c.method));
+                return;
+            }
+            await handlers[c.method].serveRPC(r, c);
+        }
+    };
+}
+
+function uuid4(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(cc) {
+        var rr = Math.random() * 16 | 0; return (cc === 'x' ? rr : (rr & 0x3 | 0x8)).toString(16);
+    });
+}
+
+export class ObjectManager {
+    values: any;
+    mountPath: string;
+
+    constructor() {
+        this.values = {};
+        this.mountPath = "/";
+    }
+
+    object(path: string): ManagedObject {
+        var id = path.replace(this.mountPath, "");
+        if (id[0] === "/") {
+            id = id.substr(1);
+        }
+        var v = this.values[id];
+        if (!v) {
+            return undefined;
+        }
+        return new ManagedObject(this, id, v);
+    }
+
+    register(v: any): ManagedObject {
+        var id = uuid4();
+        this.values[id] = v;
+        return new ManagedObject(this, id, v);
+    }
+
+    async serveRPC(r: Responder, c: Call) {
+        var parts = c.objectPath.split("/");
+        var id = parts.pop();
+        var v = this.values[id];
+        if (!v) {
+            r.return(new Error("object not registered: "+c.objectPath));
+            return;
+        }
+        Export(v).serveRPC(r, c);
+    }
+
+    mount(api: API, path: string) {
+        this.mountPath = path;
+        api.handle(path, this);
+    }
+}
+
+class ManagedObject {
+    manager: ObjectManager;
+    id: string;
+    value: any;
+
+    constructor(manager: ObjectManager, id: string, value: any) {
+        this.manager = manager;
+        this.id = id;
+        this.value = value;
+    }
+
+    dispose() {
+        delete this.manager.values[this.id];
+    }
+
+    path(): string {
+        return [this.manager.mountPath, this.id].join("/");
     }
 }

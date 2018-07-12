@@ -115,14 +115,19 @@ type session struct {
 
 	errCond *sync.Cond
 	err     error
+	closeCh chan bool
 }
 
 // NewSession returns a session that runs over the given connection.
 func NewSession(c net.Conn) Session {
+	if c == nil {
+		return nil
+	}
 	s := &session{
 		conn:             c,
 		incomingChannels: make(chan Channel, chanSize),
 		errCond:          sync.NewCond(new(sync.Mutex)),
+		closeCh:          make(chan bool, 1),
 	}
 	go s.loop()
 	return s
@@ -138,7 +143,8 @@ func (s *session) sendMessage(msg interface{}) error {
 }
 
 func (s *session) Close() error {
-	return s.conn.Close()
+	s.conn.Close()
+	return nil
 }
 
 func (s *session) LocalAddr() net.Addr {
@@ -171,6 +177,7 @@ func (s *session) loop() {
 	}
 
 	s.conn.Close()
+	s.closeCh <- true
 
 	s.errCond.L.Lock()
 	s.err = err
@@ -264,8 +271,12 @@ func (s *session) handleChannelOpen(packet []byte) error {
 }
 
 func (s *session) Accept() (Channel, error) {
-	// TODO: EOF
-	return <-s.incomingChannels, nil
+	select {
+	case ch := <-s.incomingChannels:
+		return ch, nil
+	case <-s.closeCh:
+		return nil, io.EOF
+	}
 }
 
 func (s *session) Open() (Channel, error) {

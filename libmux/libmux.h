@@ -65,31 +65,35 @@ extern "C" {
 #endif
 
 
-extern GoInt Error(GoInt p0, unsigned char* p1, GoInt p2);
+extern void DumpRefs();
 
-extern GoInt DialTCP(GoString p0);
+extern GoInt32 TestError(unsigned char* p0, GoInt32 p1);
 
-extern GoInt ListenTCP(GoString p0);
+extern GoInt32 Error(GoInt32 p0, unsigned char* p1, GoInt32 p2);
 
-extern GoInt DialWebsocket(GoString p0);
+extern GoInt32 DialTCP(GoString p0);
 
-extern GoInt ListenWebsocket(GoString p0);
+extern GoInt32 ListenTCP(GoString p0);
 
-extern GoInt ListenerClose(GoInt p0);
+extern GoInt32 DialWebsocket(GoString p0);
 
-extern GoInt ListenerAccept(GoInt p0);
+extern GoInt32 ListenWebsocket(GoString p0);
 
-extern GoInt SessionClose(GoInt p0);
+extern GoInt32 ListenerClose(GoInt32 p0);
 
-extern GoInt SessionOpen(GoInt p0);
+extern GoInt32 ListenerAccept(GoInt32 p0);
 
-extern GoInt SessionAccept(GoInt p0);
+extern GoInt32 SessionClose(GoInt32 p0);
 
-extern GoInt ChannelClose(GoInt p0);
+extern GoInt32 SessionOpen(GoInt32 p0);
 
-extern GoInt ChannelWrite(GoInt p0, unsigned char* p1, GoInt p2);
+extern GoInt32 SessionAccept(GoInt32 p0);
 
-extern GoInt ChannelRead(GoInt p0, unsigned char* p1, GoInt p2);
+extern GoInt32 ChannelClose(GoInt32 p0);
+
+extern GoInt32 ChannelWrite(GoInt32 p0, unsigned char* p1, GoInt32 p2);
+
+extern GoInt32 ChannelRead(GoInt32 p0, unsigned char* p1, GoInt32 p2);
 
 #ifdef __cplusplus
 }

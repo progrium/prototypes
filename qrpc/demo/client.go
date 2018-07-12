@@ -20,14 +20,20 @@ func main() {
 
 	flag.Parse()
 
-	var resp string
-	var args interface{}
-	if flag.Arg(1) != "" {
-		args = flag.Arg(1)
-	}
-	err = client.Call(flag.Arg(0), args, &resp)
+	var resp1 qrpc.ObjectHandle
+	var resp2 string
+	err = client.Call("demo/NewPerson", "Jeff", &resp1)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("resp: %#v\n", resp)
+	fmt.Println("handle:", resp1)
+	err = client.Call(resp1.ObjectPath+"/IncrAge", nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	err = client.Call("demo/Person", resp1, &resp2)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("resp: %#v\n", resp2)
 }

@@ -4,9 +4,11 @@ import "C"
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"reflect"
 	"sync"
 	"unsafe"
 
@@ -15,65 +17,66 @@ import (
 
 type refmanager struct {
 	sync.Mutex
-	values []interface{}
-	errors []error
+	values    map[int32]interface{}
+	errors    map[int32]error
+	nextValID int32
+	nextErrID int32
 }
 
-func (m *refmanager) StoreVal(v interface{}) int {
+func (m *refmanager) StoreVal(v interface{}) int32 {
 	m.Lock()
 	defer m.Unlock()
-	for idx, vv := range m.values {
-		if vv == nil {
-			m.values[idx] = v
-			return idx + 1
-		}
+	if m.values == nil {
+		m.values = make(map[int32]interface{})
 	}
-	m.values = append(m.values, v)
-	return len(m.values)
+	m.nextValID++
+	m.values[m.nextValID] = v
+	return m.nextValID
 }
 
-func (m *refmanager) ReleaseVal(id int) int {
+func (m *refmanager) ReleaseVal(id int32) int32 {
 	m.Lock()
 	defer m.Unlock()
-	if id-1 >= len(m.values) || id < 1 {
-		return 0
-	}
-	m.values[id-1] = nil
+	delete(m.values, id)
 	return 0
 }
 
-func (m *refmanager) Val(id int) interface{} {
+func (m *refmanager) Val(id int32) interface{} {
 	m.Lock()
 	defer m.Unlock()
-	if id-1 >= len(m.values) || id < 1 {
+	if m.values == nil {
+		m.values = make(map[int32]interface{})
+	}
+	val, ok := m.values[id]
+	if !ok {
 		return nil
 	}
-	return m.values[id-1]
+	return val
 }
 
-func (m *refmanager) StoreErr(err error) int {
+func (m *refmanager) StoreErr(err error) int32 {
 	m.Lock()
 	defer m.Unlock()
-	defer log.Println(err)
-	for idx, vv := range m.values {
-		if vv == nil {
-			m.values[idx] = err
-			return idx + 1
-		}
+	log.Println(err)
+	if m.errors == nil {
+		m.errors = make(map[int32]error)
 	}
-	m.values = append(m.values, err)
-	return len(m.values)
+	m.nextErrID--
+	m.errors[m.nextErrID] = err
+	return m.nextErrID
 }
 
-func (m *refmanager) Err(id int) error {
+func (m *refmanager) Err(id int32) error {
 	m.Lock()
 	defer m.Unlock()
-	if id-1 >= len(m.errors) || id < 1 {
-		log.Println("bad errid:", id)
+	if m.errors == nil {
+		m.errors = make(map[int32]error)
+	}
+	err, ok := m.errors[id]
+	if !ok {
 		return nil
 	}
-	err := m.errors[id-1]
-	m.errors[id-1] = nil
+	delete(m.errors, id)
 	return err
 }
 
@@ -82,55 +85,73 @@ var refs = &refmanager{}
 var errNoValueFmt = "%s id has no value"
 var errTypeFmt = "%s id has wrong type"
 
+//export DumpRefs
+func DumpRefs() {
+	refs.Lock()
+	defer refs.Unlock()
+	valTypes := make(map[int32]string)
+	for k, v := range refs.values {
+		rv := reflect.ValueOf(v)
+		valTypes[k] = rv.Elem().Type().Name()
+	}
+	fmt.Println(valTypes)
+}
+
+//export TestError
+func TestError(buf *C.uchar, len int32) int32 {
+	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
+	return refs.StoreErr(errors.New(string(b)))
+}
+
 //export Error
-func Error(id int, buf *C.uchar, len int) int {
+func Error(id int32, buf *C.uchar, len int32) int32 {
 	err := refs.Err(id)
 	if err == nil {
 		return 0
 	}
 	errBuf := bytes.NewBufferString(err.Error())
 	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
-	return copy(b, errBuf.Bytes())
+	return int32(copy(b, errBuf.Bytes()))
 }
 
 //export DialTCP
-func DialTCP(addr string) int {
+func DialTCP(addr string) int32 {
 	sess, err := mux.DialTCP(addr)
 	if err != nil {
-		return -1
+		return refs.StoreErr(err)
 	}
 	return refs.StoreVal(sess)
 }
 
 //export ListenTCP
-func ListenTCP(addr string) int {
+func ListenTCP(addr string) int32 {
 	l, err := mux.ListenTCP(addr)
 	if err != nil {
-		return -1
+		return refs.StoreErr(err)
 	}
 	return refs.StoreVal(l)
 }
 
 //export DialWebsocket
-func DialWebsocket(addr string) int {
+func DialWebsocket(addr string) int32 {
 	sess, err := mux.DialWebsocket(addr)
 	if err != nil {
-		return -1
+		return refs.StoreErr(err)
 	}
 	return refs.StoreVal(sess)
 }
 
 //export ListenWebsocket
-func ListenWebsocket(addr string) int {
+func ListenWebsocket(addr string) int32 {
 	l, err := mux.ListenWebsocket(addr)
 	if err != nil {
-		return -1
+		return refs.StoreErr(err)
 	}
 	return refs.StoreVal(l)
 }
 
 //export ListenerClose
-func ListenerClose(id int) int {
+func ListenerClose(id int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Listener"))
@@ -146,7 +167,7 @@ func ListenerClose(id int) int {
 }
 
 //export ListenerAccept
-func ListenerAccept(id int) int {
+func ListenerAccept(id int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Listener"))
@@ -166,7 +187,7 @@ func ListenerAccept(id int) int {
 }
 
 //export SessionClose
-func SessionClose(id int) int {
+func SessionClose(id int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Session"))
@@ -175,17 +196,18 @@ func SessionClose(id int) int {
 	if !ok {
 		return refs.StoreErr(fmt.Errorf(errTypeFmt, "SessionClose"))
 	}
+	defer refs.ReleaseVal(id)
 	if err := sess.Close(); err != nil {
 		if err == io.EOF {
 			return 0
 		}
 		return refs.StoreErr(err)
 	}
-	return refs.ReleaseVal(id)
+	return 0
 }
 
 //export SessionOpen
-func SessionOpen(id int) int {
+func SessionOpen(id int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Session"))
@@ -205,7 +227,7 @@ func SessionOpen(id int) int {
 }
 
 //export SessionAccept
-func SessionAccept(id int) int {
+func SessionAccept(id int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Session"))
@@ -225,7 +247,7 @@ func SessionAccept(id int) int {
 }
 
 //export ChannelClose
-func ChannelClose(id int) int {
+func ChannelClose(id int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Channel"))
@@ -234,17 +256,18 @@ func ChannelClose(id int) int {
 	if !ok {
 		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ChannelClose"))
 	}
+	defer refs.ReleaseVal(id)
 	if err := ch.Close(); err != nil {
 		if err == io.EOF {
 			return 0
 		}
 		return refs.StoreErr(err)
 	}
-	return refs.ReleaseVal(id)
+	return 0
 }
 
 //export ChannelWrite
-func ChannelWrite(id int, buf *C.uchar, len int) int {
+func ChannelWrite(id int32, buf *C.uchar, len int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Channel"))
@@ -254,6 +277,7 @@ func ChannelWrite(id int, buf *C.uchar, len int) int {
 		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ChannelWrite"))
 	}
 	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
+
 	n, err := ch.Write(b)
 	if err != nil {
 		if err == io.EOF {
@@ -261,11 +285,11 @@ func ChannelWrite(id int, buf *C.uchar, len int) int {
 		}
 		return refs.StoreErr(err)
 	}
-	return n
+	return int32(n)
 }
 
 //export ChannelRead
-func ChannelRead(id int, buf *C.uchar, len int) int {
+func ChannelRead(id int32, buf *C.uchar, len int32) int32 {
 	r := refs.Val(id)
 	if r == nil {
 		return 0 //refs.StoreErr(fmt.Errorf(errNoValueFmt, "Channel"))
@@ -282,7 +306,7 @@ func ChannelRead(id int, buf *C.uchar, len int) int {
 		}
 		return refs.StoreErr(err)
 	}
-	return n
+	return int32(n)
 }
 
 func main() {}

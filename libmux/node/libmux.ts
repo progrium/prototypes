@@ -3,7 +3,6 @@ import * as ref from "ref";
 
 import * as ArrayType from "ref-array";
 import * as Struct from "ref-struct";
-import { PerformanceObserver } from "perf_hooks";
 
 let ByteArray = ArrayType(ref.types.uint8);
 let GoString = Struct({
@@ -19,34 +18,39 @@ function goStr(str: string): any {
 }
 
 var libmux = ffi.Library(__dirname + "/../libmux", {
-  Error: ["int", ["int", ByteArray, "int"]],
+  Error: ["int32", ["int32", ByteArray, "int32"]],
+  TestError: ["int32", [ByteArray, "int32"]],
+  DumpRefs: ["void", []],
 
-  DialTCP: ["int", [GoString]],
-  ListenTCP: ["int", [GoString]],
+  DialTCP: ["int32", [ByteArray, "int32"]],
+  ListenTCP: ["int32", [ByteArray, "int32"]],
 
-  DialWebsocket: ["int", [GoString]],
-  ListenWebsocket: ["int", [GoString]],
+  DialWebsocket: ["int32", [ByteArray, "int32"]],
+  ListenWebsocket: ["int32", [ByteArray, "int32"]],
 
-  ListenerClose: ["int", ["int"]],
-  ListenerAccept: ["int", ["int"]],
+  ListenerClose: ["int32", ["int32"]],
+  ListenerAccept: ["int32", ["int32"]],
 
-  SessionOpen: ["int", ["int"]],
-  SessionAccept: ["int", ["int"]],
-  SessionClose: ["int", ["int"]],
+  SessionOpen: ["int32", ["int32"]],
+  SessionAccept: ["int32", ["int32"]],
+  SessionClose: ["int32", ["int32"]],
 
-  ChannelRead: ["int", ["int", ByteArray, "int"]],
-  ChannelWrite: ["int", ["int", ByteArray, "int"]],
-  ChannelClose: ["int", ["int"]],
+  ChannelRead: ["int32", ["int32", ByteArray, "int32"]],
+  ChannelWrite: ["int32", ["int32", ByteArray, "int32"]],
+  ChannelClose: ["int32", ["int32"]],
 });
 
 function lookupErr(id: number): string {
   var buf = ByteArray(1<<8);
-  var n = libmux.Error(id*-1, buf, buf.length);
+  var n = libmux.Error(id, buf, buf.length);
   return buf.buffer.slice(0,n).toString('ascii');
 }
 
+export var ops = [];
+
 function handle(reject, name, retHandler) {
   return (err, retcode) => {
+    ops.splice(ops.indexOf(name), 1);
     if (err) {
       reject("ffi: "+err);
       return;
@@ -59,9 +63,25 @@ function handle(reject, name, retHandler) {
   };
 }
 
-export function ListenTCP(addr: string): Promise<Listener> {
+export function TestError(str: string): Promise<void> {
+  var buf = ByteArray(Buffer.from(str));
+  ops.push("TestError");
   return new Promise((resolve, reject) => {
-    libmux.ListenTCP.async(goStr(addr), handle(reject, "ListenTCP", (retcode) => {
+    libmux.TestError.async(buf, buf.length, (err, ret) => {
+      if (ret === 0) {
+        resolve();
+      }
+      console.log(ret);
+      reject(lookupErr(ret));
+    });
+  });
+}
+
+export function ListenTCP(addr: string): Promise<Listener> {
+  var buf = ByteArray(Buffer.from(addr));
+  ops.push("ListenTCP");
+  return new Promise((resolve, reject) => {
+    libmux.ListenTCP.async(buf, buf.length, handle(reject, "ListenTCP", (retcode) => {
       if (retcode === 0) {
         resolve();
         return;
@@ -72,8 +92,10 @@ export function ListenTCP(addr: string): Promise<Listener> {
 }
 
 export function DialTCP(addr: string): Promise<Session> {
+  var buf = ByteArray(Buffer.from(addr));
+  ops.push("DialTCP");
   return new Promise((resolve, reject) => {
-    libmux.DialTCP.async(goStr(addr), handle(reject, "DialTCP", (retcode) => {
+    libmux.DialTCP.async(buf, buf.length, handle(reject, "DialTCP", (retcode) => {
       if (retcode === 0) {
         resolve();
         return;
@@ -84,8 +106,10 @@ export function DialTCP(addr: string): Promise<Session> {
 }
 
 export function ListenWebsocket(addr: string): Promise<Listener> {
+  var buf = ByteArray(Buffer.from(addr));
+  ops.push("ListenWebsocket");
   return new Promise((resolve, reject) => {
-    libmux.ListenWebsocket.async(goStr(addr), handle(reject, "ListenWebsocket", (retcode) => {
+    libmux.ListenWebsocket.async(buf, buf.length, handle(reject, "ListenWebsocket", (retcode) => {
       if (retcode === 0) {
         resolve();
         return;
@@ -96,8 +120,10 @@ export function ListenWebsocket(addr: string): Promise<Listener> {
 }
 
 export function DialWebsocket(addr: string): Promise<Session> {
+  var buf = ByteArray(Buffer.from(addr));
+  ops.push("DialWebsocket");
   return new Promise((resolve, reject) => {
-    libmux.DialWebsocket.async(goStr(addr), handle(reject, "DialWebsocket", (retcode) => {
+    libmux.DialWebsocket.async(buf, buf.length, handle(reject, "DialWebsocket", (retcode) => {
       if (retcode === 0) {
         resolve();
         return;
@@ -122,6 +148,7 @@ class Listener {
 
   accept(): Promise<Session> {
     if (this.closed) return new Promise(r => r());
+    ops.push("ListenerAccept");
     return new Promise((resolve, reject) => {
       libmux.ListenerAccept.async(this.id, handle(reject, "ListenerAccept", (retcode) => {
         if (retcode === 0) {
@@ -135,6 +162,7 @@ class Listener {
 
   close(): Promise<void> {
     if (this.closed) return Promise.resolve();
+    ops.push("ListenerClose");
     return new Promise((resolve, reject) => {
       libmux.ListenerClose.async(this.id, handle(reject, "ListenerClose", () => {
         this.closed = true;
@@ -155,6 +183,7 @@ class Session {
 
   open(): Promise<Channel> {
     if (this.closed) return new Promise(r => r());
+    ops.push("SessionOpen");
     return new Promise((resolve, reject) => {
       libmux.SessionOpen.async(this.id, handle(reject, "SessionOpen", (retcode) => {
         if (retcode === 0) {
@@ -168,6 +197,7 @@ class Session {
 
   accept(): Promise<Channel> {
     if (this.closed) return new Promise(r => r());
+    ops.push("SessionAccept");
     return new Promise((resolve, reject) => {
       libmux.SessionAccept.async(this.id, handle(reject, "SessionAccept", (retcode) => {
         if (retcode === 0) {
@@ -181,6 +211,7 @@ class Session {
 
   close(): Promise<void> {
     if (this.closed) return Promise.resolve();
+    ops.push("SessionClose");
     return new Promise((resolve, reject) => {
       libmux.SessionClose.async(this.id, handle(reject, "SessionClose", () => {
         this.closed = true;
@@ -201,6 +232,7 @@ class Channel {
 
   read(len: number): Promise<Buffer> {
     if (this.closed) return new Promise(r => r());
+    ops.push("ChannelRead");
     return new Promise((resolve, reject) => {
       var buffer = ByteArray(len);
       libmux.ChannelRead.async(this.id, buffer, buffer.length, handle(reject, "ChannelRead", (retcode) => {
@@ -216,6 +248,7 @@ class Channel {
 
   write(buf: Buffer): Promise<number> {
     if (this.closed) return new Promise(r => r());
+    ops.push("ChannelWrite");
     return new Promise((resolve, reject) => {
       var buffer = ByteArray(buf);
       libmux.ChannelWrite.async(this.id, buffer, buffer.length, handle(reject, "ChannelWrite", (retcode) => resolve(retcode)));
@@ -224,6 +257,7 @@ class Channel {
 
   close(): Promise<void> {
     if (this.closed) return Promise.resolve();
+    ops.push("ChannelClose");
     return new Promise((resolve, reject) => {
       libmux.ChannelClose.async(this.id, handle(reject, "ChannelClose", () => {
         this.closed = true;

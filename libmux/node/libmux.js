@@ -16,27 +16,31 @@ function goStr(str) {
     return s;
 }
 var libmux = ffi.Library(__dirname + "/../libmux", {
-    Error: ["int", ["int", ByteArray, "int"]],
-    DialTCP: ["int", [GoString]],
-    ListenTCP: ["int", [GoString]],
-    DialWebsocket: ["int", [GoString]],
-    ListenWebsocket: ["int", [GoString]],
-    ListenerClose: ["int", ["int"]],
-    ListenerAccept: ["int", ["int"]],
-    SessionOpen: ["int", ["int"]],
-    SessionAccept: ["int", ["int"]],
-    SessionClose: ["int", ["int"]],
-    ChannelRead: ["int", ["int", ByteArray, "int"]],
-    ChannelWrite: ["int", ["int", ByteArray, "int"]],
-    ChannelClose: ["int", ["int"]]
+    Error: ["int32", ["int32", ByteArray, "int32"]],
+    TestError: ["int32", [ByteArray, "int32"]],
+    DumpRefs: ["void", []],
+    DialTCP: ["int32", [ByteArray, "int32"]],
+    ListenTCP: ["int32", [ByteArray, "int32"]],
+    DialWebsocket: ["int32", [ByteArray, "int32"]],
+    ListenWebsocket: ["int32", [ByteArray, "int32"]],
+    ListenerClose: ["int32", ["int32"]],
+    ListenerAccept: ["int32", ["int32"]],
+    SessionOpen: ["int32", ["int32"]],
+    SessionAccept: ["int32", ["int32"]],
+    SessionClose: ["int32", ["int32"]],
+    ChannelRead: ["int32", ["int32", ByteArray, "int32"]],
+    ChannelWrite: ["int32", ["int32", ByteArray, "int32"]],
+    ChannelClose: ["int32", ["int32"]]
 });
 function lookupErr(id) {
     var buf = ByteArray(1 << 8);
-    var n = libmux.Error(id * -1, buf, buf.length);
+    var n = libmux.Error(id, buf, buf.length);
     return buf.buffer.slice(0, n).toString('ascii');
 }
+exports.ops = [];
 function handle(reject, name, retHandler) {
     return function (err, retcode) {
+        exports.ops.splice(exports.ops.indexOf(name), 1);
         if (err) {
             reject("ffi: " + err);
             return;
@@ -48,9 +52,25 @@ function handle(reject, name, retHandler) {
         retHandler(retcode);
     };
 }
-function ListenTCP(addr) {
+function TestError(str) {
+    var buf = ByteArray(Buffer.from(str));
+    exports.ops.push("TestError");
     return new Promise(function (resolve, reject) {
-        libmux.ListenTCP.async(goStr(addr), handle(reject, "ListenTCP", function (retcode) {
+        libmux.TestError.async(buf, buf.length, function (err, ret) {
+            if (ret === 0) {
+                resolve();
+            }
+            console.log(ret);
+            reject(lookupErr(ret));
+        });
+    });
+}
+exports.TestError = TestError;
+function ListenTCP(addr) {
+    var buf = ByteArray(Buffer.from(addr));
+    exports.ops.push("ListenTCP");
+    return new Promise(function (resolve, reject) {
+        libmux.ListenTCP.async(buf, buf.length, handle(reject, "ListenTCP", function (retcode) {
             if (retcode === 0) {
                 resolve();
                 return;
@@ -61,8 +81,10 @@ function ListenTCP(addr) {
 }
 exports.ListenTCP = ListenTCP;
 function DialTCP(addr) {
+    var buf = ByteArray(Buffer.from(addr));
+    exports.ops.push("DialTCP");
     return new Promise(function (resolve, reject) {
-        libmux.DialTCP.async(goStr(addr), handle(reject, "DialTCP", function (retcode) {
+        libmux.DialTCP.async(buf, buf.length, handle(reject, "DialTCP", function (retcode) {
             if (retcode === 0) {
                 resolve();
                 return;
@@ -73,8 +95,10 @@ function DialTCP(addr) {
 }
 exports.DialTCP = DialTCP;
 function ListenWebsocket(addr) {
+    var buf = ByteArray(Buffer.from(addr));
+    exports.ops.push("ListenWebsocket");
     return new Promise(function (resolve, reject) {
-        libmux.ListenWebsocket.async(goStr(addr), handle(reject, "ListenWebsocket", function (retcode) {
+        libmux.ListenWebsocket.async(buf, buf.length, handle(reject, "ListenWebsocket", function (retcode) {
             if (retcode === 0) {
                 resolve();
                 return;
@@ -85,8 +109,10 @@ function ListenWebsocket(addr) {
 }
 exports.ListenWebsocket = ListenWebsocket;
 function DialWebsocket(addr) {
+    var buf = ByteArray(Buffer.from(addr));
+    exports.ops.push("DialWebsocket");
     return new Promise(function (resolve, reject) {
-        libmux.DialWebsocket.async(goStr(addr), handle(reject, "DialWebsocket", function (retcode) {
+        libmux.DialWebsocket.async(buf, buf.length, handle(reject, "DialWebsocket", function (retcode) {
             if (retcode === 0) {
                 resolve();
                 return;
@@ -110,6 +136,7 @@ var Listener = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return new Promise(function (r) { return r(); });
+        exports.ops.push("ListenerAccept");
         return new Promise(function (resolve, reject) {
             libmux.ListenerAccept.async(_this.id, handle(reject, "ListenerAccept", function (retcode) {
                 if (retcode === 0) {
@@ -124,6 +151,7 @@ var Listener = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return Promise.resolve();
+        exports.ops.push("ListenerClose");
         return new Promise(function (resolve, reject) {
             libmux.ListenerClose.async(_this.id, handle(reject, "ListenerClose", function () {
                 _this.closed = true;
@@ -142,6 +170,7 @@ var Session = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return new Promise(function (r) { return r(); });
+        exports.ops.push("SessionOpen");
         return new Promise(function (resolve, reject) {
             libmux.SessionOpen.async(_this.id, handle(reject, "SessionOpen", function (retcode) {
                 if (retcode === 0) {
@@ -156,6 +185,7 @@ var Session = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return new Promise(function (r) { return r(); });
+        exports.ops.push("SessionAccept");
         return new Promise(function (resolve, reject) {
             libmux.SessionAccept.async(_this.id, handle(reject, "SessionAccept", function (retcode) {
                 if (retcode === 0) {
@@ -170,6 +200,7 @@ var Session = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return Promise.resolve();
+        exports.ops.push("SessionClose");
         return new Promise(function (resolve, reject) {
             libmux.SessionClose.async(_this.id, handle(reject, "SessionClose", function () {
                 _this.closed = true;
@@ -188,6 +219,7 @@ var Channel = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return new Promise(function (r) { return r(); });
+        exports.ops.push("ChannelRead");
         return new Promise(function (resolve, reject) {
             var buffer = ByteArray(len);
             libmux.ChannelRead.async(_this.id, buffer, buffer.length, handle(reject, "ChannelRead", function (retcode) {
@@ -204,6 +236,7 @@ var Channel = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return new Promise(function (r) { return r(); });
+        exports.ops.push("ChannelWrite");
         return new Promise(function (resolve, reject) {
             var buffer = ByteArray(buf);
             libmux.ChannelWrite.async(_this.id, buffer, buffer.length, handle(reject, "ChannelWrite", function (retcode) { return resolve(retcode); }));
@@ -213,6 +246,7 @@ var Channel = /** @class */ (function () {
         var _this = this;
         if (this.closed)
             return Promise.resolve();
+        exports.ops.push("ChannelClose");
         return new Promise(function (resolve, reject) {
             libmux.ChannelClose.async(_this.id, handle(reject, "ChannelClose", function () {
                 _this.closed = true;

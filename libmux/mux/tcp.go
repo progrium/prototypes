@@ -17,5 +17,5 @@ func DialTCP(addr string) (Session, error) {
 
 func ListenTCP(addr string) (Listener, error) {
 	listener, err := net.Listen("tcp", addr)
-	return &qmuxListener{listener}, err
+	return &qmuxListener{Listener: listener}, err
 }
