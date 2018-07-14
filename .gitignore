@@ -4,3 +4,4 @@ youtube-export/node_modules
 node_modules
 libmux/libmux.dylib
 typing
+yarn-error.log
