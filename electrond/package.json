@@ -1,0 +1,21 @@
+{
+  "name": "electrond",
+  "version": "0.1.0",
+  "devDependencies": {
+    "ejs": "^2.6.1",
+    "electron": "^3.0.0-beta.2",
+    "electron-builder": "^20.20.4",
+    "lodash": "^4.17.10",
+    "tree-walk": "^0.4.0",
+    "typescript": "^2.9.2"
+  },
+  "build": {
+    "appId": "electrond",
+    "mac": {
+      "category": "your.app.category.type"
+    }
+  },
+  "dependencies": {
+    "ffi": "node-ffi/node-ffi"
+  }
+}

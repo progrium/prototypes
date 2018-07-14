@@ -140,10 +140,6 @@ class Listener {
   constructor(id: number) {
     this.id = id;
     this.closed = false;
-    process.once('SIGINT', (code) => {
-      if (!this.closed) 
-        libmux.ListenerClose(id);
-    });
   }
 
   accept(): Promise<Session> {

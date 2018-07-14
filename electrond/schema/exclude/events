@@ -1,0 +1,29 @@
+// internal use
+app.will-finish-launching
+app.window-all-closed
+app.new-window-for-tab
+app.ready
+app.session-created
+app.second-instance
+
+process.loaded
+
+// maybe later
+app.before-quit
+app.open-file
+app.open-url
+app.activate
+app.continue-activity
+app.will-continue-activity
+app.continue-activity-error
+app.activity-was-continued
+app.update-activity-state
+app.certificate-error
+app.select-client-certificate
+app.login
+app.gpu-process-crashed
+app.accessibility-support-changed
+app.web-contents-created
+app.browser-window-blur
+app.browser-window-focus
+app.browser-window-created

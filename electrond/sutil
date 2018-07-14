@@ -1,0 +1,447 @@
+#!/usr/bin/env node
+const fs = require("fs")
+const walk = require('tree-walk')
+const _ = require("lodash")
+
+
+var includes = loadIncludes()
+var excludes = loadExcludes()
+
+switch (process.argv[2]) {
+    default:
+        console.log("Commands:")
+        console.log("  TODO")
+        break
+
+    case "metatypes":
+        var schema = loadSchema(schemaPath())
+        var metatypes = _.uniq(schema.map((el) => el.type))
+        show(markIncluded(metatypes, includes.metatypes))
+        break
+
+    case "modules":
+        var schema = loadSchema(schemaPath())
+        var modules = _.uniq(walkFind(schema, (el) => el.type == "Module").map((el) => el.name))
+        var submodules = includes.modules
+                .filter((el) => el.indexOf(".") != -1)
+                .filter((el) => walkFindName(schema, el) != undefined)
+        show(markIncluded(_.union(modules, submodules), includes.modules))
+        break
+    
+    case "classes":
+        var schema = loadSchema(schemaPath())
+        var classes = _.uniq(walkFind(schema, (el) => el.type == "Class").map((el) => el.name))
+        show(markIncluded(classes, includes.classes))
+        break
+
+    case "structs":
+        var schema = loadSchema(schemaPath())
+        var structs = _.uniq(walkFind(schema, (el) => el.type == "Structure").map((el) => el.name))
+        show(markIncluded(structs, includes.structs))
+        break
+    
+    case "types":
+        var schema = loadSchema(schemaPath())
+        show(getTypes(schema))
+        break
+    
+    case "tree":
+        var prefix = process.argv[3] || ""
+        var schema = loadSchema(schemaPath())
+        var paths = []
+        walkNames(schema, (n,v) => {
+            if (n.startsWith(prefix)) {
+                paths.push(n)
+            }
+        })
+        show(_.uniq(paths))
+        break
+    
+    case "ts":
+        var schema = build(loadSchema(schemaPath()))
+        var Generator = require("./schema/tsgen");
+        ts = new Generator();
+        
+        schema.types.forEach((t) => {
+            ts.decl("class", t, () => {})
+        })
+        
+        // temporary
+        ts.decl("class", "BrowserWindow", () => {})
+
+        ts.decl("namespace", "electron", (ts) => {
+            schema.structs.forEach((s) => {
+                ts.commentBlock(s.description)
+                ts.decl("class", s.name, (ts) => {
+                    (s.properties||[]).forEach((prop) => {
+                        ts.decl(ts.var(prop.name, prop.type))
+                    })
+                })
+            })
+            schema.classes.forEach((c) => {
+                ts.commentBlock(c.description)
+                ts.decl("class", c.name, (ts) => {
+                    (c.properties||c.instanceProperties||[]).forEach((prop) => {
+                        ts.decl(ts.var(prop.name, prop.type))
+                    })
+                })
+            })
+            schema.modules.forEach((m) => {
+                ts.commentBlock(m.description)
+                ts.decl("namespace", m.name, (ts) => {
+                    (m.properties||[]).filter((prop) => prop.type === "Object").forEach((sub) => {
+                        ts.decl("namespace", sub.name, (ts) => {
+                            // this does the same as below, keep in sync
+                            (sub.properties||[]).filter((prop) => prop.type === "Function").forEach((method) => {
+                                ts.commentBlock(method.description)
+                                ts.func(method.name, _.compact(method.parameters||[]).map((param) => ts.var(param.name, convertType(param))), convertType(method.returns), () => {
+                                    if (method.returns) {
+                                        ts.decl("return", typeValue(method.returns))
+                                    }
+                                })
+                            });
+                        });
+                    });
+                    (m.methods||[]).forEach((method) => {
+                        ts.commentBlock(method.description)
+                        ts.func(method.name, _.compact(method.parameters||[]).map((param) => ts.var(param.name, convertType(param))), convertType(method.returns), () => {
+                            if (method.returns) {
+                                ts.decl("return", typeValue(method.returns))
+                            }
+                        })
+                    });
+                    (m.events||[]).forEach((event) => {
+                        ts.commentBlock(event.description+"\n@event")
+                        ts.decl("var", ts.var(eventTitle(event.name), "string", ts.str(event.name)))
+                    });
+                });
+            });
+        })
+        
+        console.log(ts.toString())
+        break
+    
+    case "build":
+        var schema = loadSchema(schemaPath())
+        console.log(JSON.stringify(build(schema), null, "  "))
+}
+
+function build(schema) {
+    var output = {}
+    output.modules = _.compact(includes.modules.map((name) => {
+        return walkFindName(schema, name, (el) => el.type == "Module")
+    }))
+    output.classes = includes.classes.map((name) => {
+        return walkFindName(schema, name, (el) => el.type == "Class")
+    })
+    output.structs = includes.structs.map((name) => {
+        return walkFindName(schema, name, (el) => el.type == "Structure")
+    })
+    output.types = getTypes(schema)
+    
+    walkNames(output, (n, obj) => {
+        if (_.keys(excludes.methods).includes(n) && ["Object", "Module"].includes(obj.type)) {
+            if (obj.methods) {
+                obj.methods = obj.methods.filter((el) => {
+                    return !excludes.methods[n].includes(el.name)
+                })    
+            }
+            if (obj.properties) {
+                obj.properties = obj.properties.filter((el) => {
+                    return !excludes.methods[n].includes(el.name)
+                })    
+            }
+        }
+        if (_.keys(excludes.props).includes(n) && ["Object", "Module"].includes(obj.type)) {
+            if (obj.properties) {
+                obj.properties = obj.properties.filter((el) => {
+                    return !excludes.props[n].includes(el.name)
+                })    
+            }
+        }
+        if (_.keys(excludes.events).includes(n) && "Module" === obj.type) {
+            if (obj.events) {
+                obj.events = obj.events.filter((el) => {
+                    return !excludes.events[n].includes(el.name)
+                })    
+            }
+        }
+        if (_.keys(excludes.params).includes(n)) {
+            if (obj.parameters) {
+                obj.parameters = obj.parameters.filter((el) => {
+                    return !excludes.params[n].includes(el.name)
+                })    
+            }
+        }
+        if ("dialog" === n && "Module" === obj.type) {
+            obj.methods = obj.methods.map((m) => {
+                if (["showOpenDialog", "showSaveDialog", "showMessageBox"].includes(m.name)) {
+                    m = callbackToReturn("callback")(m)
+                }
+                return m
+            })
+        }
+        if ("protocol" === n && "Module" === obj.type) {
+            obj.methods = obj.methods.map((m) => {
+                if (["registerFileProtocol", "registerStringProtocol", "registerHttpProtocol", "unregisterProtocol"].includes(m.name)) {
+                    m = callbackToReturn("completion")(m)
+                }
+                if (m.name === "isProtocolHandled") {
+                    m = callbackToReturn("callback")(m)
+                }
+                return m
+            })
+        }
+    })
+    return output
+}
+
+function getTypes(schema) {
+    var types = []
+    walk.preorder(schema, (v,k,p) => {
+        if (k === "type") {
+            if (Array.isArray(v)) {
+                v.forEach((el) => types.push(el.typeName))
+            } else {
+                types.push(v)
+            }
+        }
+    })
+    var metatypes = _.uniq(schema.map((el) => el.type))
+    var knownTypes = _.uniq(walkFind(schema, (el) => metatypes.includes(el.type)).map((el) => el.name))
+    var nodeTypes = ["Date", "URL", "ReadableStream", "Event", "String", "Array", "Error", "Function", "Promise", "Boolean", "Object", "Number", "Buffer"]
+    var fakeTypes = ["Any", "any", "null"]
+    return _.difference(_.uniq(types), _.union(knownTypes, metatypes)).filter((el) => !_.union(nodeTypes, fakeTypes).includes(el))
+}
+
+function schemaPath() {
+    if (process.env["SCHEMA"]) return process.env["SCHEMA"]
+    var version = process.env["VER"] || "latest"
+    return __dirname+"/schema/versions/"+version+".json"
+}
+
+function loadSchema(path) {
+    return JSON.parse(fs.readFileSync(path))
+}
+
+function show(v) {
+    if (Array.isArray(v)) {
+        v.forEach((el) => console.log(el))
+        return
+    }
+    console.log(v)
+}
+
+function walkFind(obj, fn) {
+    var results = []
+    walk.preorder(obj, (v,k,p) => {
+        if (fn(v)) {
+            results.push(v)
+        }
+    })
+    return results
+}
+
+function walkFindName(obj, name, fn) {
+    if (!fn) fn = () => true
+    var parts = name.split(".")
+    parts.reverse()
+    var found;
+    walkNames(obj, (n, v) => {
+        if (n == name && v["name"] == parts[0] && fn(v)) {
+            found = v
+        }
+    })
+    return found
+}
+
+function walkNames(obj, fn) {
+    var parents = []
+    walk.preorder(obj, (v,k,p) => {
+        if (!v) return
+        if (p) {
+            while (!_.isEqual(parents[0], p)) {
+                if (parents.length == 0) {
+                    break
+                }
+                parents.shift()
+            }
+        }
+        parents.unshift(v)
+        var rp = parents.slice(0, parents.length-1);
+        rp.reverse()
+        names = rp.filter((el) => el.hasOwnProperty("name")).map((el) => el.name)
+        name = names.join(".")
+        fn(name, v)
+    })
+}
+
+function loadIncludes() {
+    return {
+        "classes": loadLines(__dirname+"/schema/include/classes"),
+        "metatypes": loadLines(__dirname+"/schema/include/metatypes"),
+        "modules": loadLines(__dirname+"/schema/include/modules"),
+        "structs": loadLines(__dirname+"/schema/include/structs"),
+    }
+}
+
+function loadExcludes() {
+    return {
+        "methods": moduleScope(loadLines(__dirname+"/schema/exclude/methods")),
+        "props": moduleScope(loadLines(__dirname+"/schema/exclude/props")),
+        "events": moduleScope(loadLines(__dirname+"/schema/exclude/events")),
+        "params": moduleScope(loadLines(__dirname+"/schema/exclude/params")),
+    }
+}
+
+function moduleScope(lines) {
+    var methods = {}
+    lines.forEach((line) => {
+        if (line == "") return
+        var parts = line.split(".")
+        var method = parts.pop()
+        var module = parts.join(".")    
+        if (methods[module] === undefined) {
+            methods[module] = []
+        }
+        methods[module].push(method)
+    })
+    return methods
+}
+
+function loadLines(path) {
+    return fs.readFileSync(path).toString('ascii').trimRight().split("\n").filter((line) => line != "" && !line.startsWith("//"))
+}
+
+function markIncluded(arr, includes) {
+    return arr.map((el) => {
+        if (includes.includes(el)) {
+            return "+ "+el
+        } else {
+            return "  "+el
+        }
+    })
+}
+
+function eventTitle(name) {
+    var words = name.split('-');
+
+    for(var i = 0; i < words.length; i++) {
+        var word = words[i];
+        words[i] = word.charAt(0).toUpperCase() + word.slice(1);
+    }
+
+    return words.join('');
+}
+
+function convertType(node) {
+    if (!node) {
+        return null
+    }
+    var exp = ""
+    switch (node.type) {
+      case "String":
+        exp = "string"
+        break
+      case "Integer":
+        exp = "number"
+        break
+      case "Object":
+        if (node.properties === undefined) {
+          exp = "any"
+        } else {
+          exp = objectType(node)
+        }
+        break
+      case "Function":
+        exp = fnType(node.parameters)
+        break
+      case "Number":
+        exp = "number"
+        break
+      case "Boolean":
+        exp = "boolean"
+        break
+      default:
+        exp = node.type
+    }
+    if (node.collection) {
+      return exp+"[]"
+    } else {
+      return exp
+    }
+  }
+
+  function typeValue(node) {
+    var exp = ""
+    switch (node.type) {
+      case "String":
+        exp = '""'
+        break
+      case "Integer":
+        exp = '0'
+        break
+      case "Object":
+        exp = 'null'
+        break
+      case "Function":
+        return 'function() {}'
+        break
+      case "Number":
+        exp = '0'
+        break
+      case "Boolean":
+        exp = 'false'
+        break
+      default:
+        if (node.collection) {
+          return 'new Array<'+node.type+'>()'
+        } else {
+          return 'new '+node.type+'()'
+        }
+    }
+    if (node.collection) {
+      return "["+exp+"]"
+    } else {
+      return exp
+    }
+  }
+
+  function objectType(node) {
+    return "{"+(node.properties||[]).map(function(prop) {
+      return prop.name + ": " + convertType(prop)
+    }).join(", ")+"}"
+  }
+  
+  function fnType(params) {
+    if (params !== undefined && params.length > 0) {
+      return "("+params.map(function(param) {
+        return param.name + ": " + convertType(param)
+      }).join(", ")+") => void"
+    } else {
+      return "() => void"
+    }
+  }
+
+  function callbackToReturn(arg) {
+    return function(node) {
+      var cbParamIdx = -1
+      node.parameters.forEach(function(param,idx) {
+        if (param.name == arg) {
+          cbParamIdx = idx
+        }
+      })
+      if (cbParamIdx > -1) {
+        var param = node.parameters[cbParamIdx]
+        node.parameters.splice(cbParamIdx,1)
+        node.returns = {
+          "type": "Object",
+          "name": param.name,
+          "callbackParam": cbParamIdx,
+          "collection": false,
+          "properties": param.parameters,
+        }
+      }
+      return node
+    }
+  }

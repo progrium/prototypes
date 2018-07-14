@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "outDir": "dist",
+
+        "target": "es2015",
+        "module": "commonjs",
+        "moduleResolution": "node",
+
+        "inlineSources": true,
+        "sourceMap": true,
+
+        "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true,
+
+        "newLine": "lf",
+
+        "noEmitOnError": true,
+        
+        "strict": false,
+        "noUnusedLocals": false,
+        "noFallthroughCasesInSwitch": false,
+        "noImplicitReturns": false
+    }
+  }

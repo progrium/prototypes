@@ -124,13 +124,8 @@ function DialWebsocket(addr) {
 exports.DialWebsocket = DialWebsocket;
 var Listener = /** @class */ (function () {
     function Listener(id) {
-        var _this = this;
         this.id = id;
         this.closed = false;
-        process.once('SIGINT', function (code) {
-            if (!_this.closed)
-                libmux.ListenerClose(id);
-        });
     }
     Listener.prototype.accept = function () {
         var _this = this;

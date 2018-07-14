@@ -1,0 +1,3 @@
+dialog.showOpenDialog.browserWindow
+dialog.showSaveDialog.browserWindow
+dialog.showMessageBox.browserWindow

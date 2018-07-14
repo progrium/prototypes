@@ -1,0 +1,11 @@
+// internal use
+process.type
+process.traceProcessWarnings
+process.traceDeprecation
+process.throwDeprecation
+process.noDeprecation
+process.noAsar
+process.defaultApp
+
+app.commandLine
+app.isPackaged

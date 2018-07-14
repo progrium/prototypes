@@ -23,7 +23,6 @@ interface Codec {
     decode(buf: Uint8Array): any
 }
 
-
 function errable(p: Promise<any>): Promise<any> {
     return p
         .then(ret => [ret, null])
@@ -87,7 +86,7 @@ class FrameCodec {
         var sdata = new DataView(new ArrayBuffer(4));
         sdata.setUint32(0, buf.length);
         await this.channel.write(Buffer.from(sdata.buffer));
-        await this.channel.write(Buffer.from(buf));
+        await this.channel.write(Buffer.from(buf.buffer as ArrayBuffer));
         return Promise.resolve();
     }
 

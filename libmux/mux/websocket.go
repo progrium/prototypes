@@ -13,15 +13,21 @@ import (
 
 func DialWebsocket(addr string) (Session, error) {
 	ws, err := websocket.Dial(fmt.Sprintf("ws://%s/", addr), "", fmt.Sprintf("http://%s/", addr))
+	if err != nil {
+		return nil, err
+	}
 	return &qmuxSession{
 		Session: qmux.NewSession(ws),
 		ctx:     context.Background(),
-	}, err
+	}, nil
 }
 
 func ListenWebsocket(addr string) (Listener, error) {
 	sessCh := make(chan qmux.Session)
 	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
 	s := &http.Server{
 		Addr: addr,
 		Handler: websocket.Handler(func(ws *websocket.Conn) {
