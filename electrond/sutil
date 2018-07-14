@@ -59,7 +59,7 @@ switch (process.argv[2]) {
     
     case "ts":
         var schema = build(loadSchema(schemaPath()))
-        var Generator = require("./schema/tsgen");
+        var Generator = require("./schema/lib/tsgen");
         ts = new Generator();
         
         schema.types.forEach((t) => {
