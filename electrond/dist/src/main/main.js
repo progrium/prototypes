@@ -11,17 +11,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const qrpc = require("qrpc");
 const libmux = require("libmux");
-const api_1 = require("./api");
+const rpc = require("./rpc");
 let listener;
+function sleep(ms) {
+    return new Promise(res => setTimeout(res, ms));
+}
 electron_1.app.on("ready", () => __awaiter(this, void 0, void 0, function* () {
     var api = new qrpc.API();
-    api.handle("dock", qrpc.Export(api_1.default.app.dock));
+    rpc.register(api);
     listener = yield libmux.ListenWebsocket("localhost:4242");
     var server = new qrpc.Server();
     console.log("serving...");
-    console.log(api_1.default.app.dock);
+    //loop()
     yield server.serve(listener, api);
 }));
+function loop() {
+    return __awaiter(this, void 0, void 0, function* () {
+        while (true) {
+            console.log("ping");
+            yield sleep(3000);
+        }
+    });
+}
 // Quit when all windows are closed.
 electron_1.app.on("window-all-closed", () => {
     // On OS X it is common for applications and their menu bar

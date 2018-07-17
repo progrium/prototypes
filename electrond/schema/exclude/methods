@@ -1,5 +1,6 @@
 // temporary, complex params
 app.dock.setIcon
+app.dock.setMenu
 
 // internal
 app.whenReady
@@ -67,6 +68,9 @@ globalShortcut.unregisterAll
 
 protocol.registerStreamProtocol
 protocol.registerBufferProtocol
+
+screen.screenToDipRect
+screen.dipToScreenRect
 
 // buggy properties on GPUFeatureStatus
 app.getGPUFeatureStatus

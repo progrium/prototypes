@@ -1,7 +1,7 @@
 package qrpc
 
 import (
-	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -88,7 +88,7 @@ func (a *api) ServeAPI(sess mux.Session, ch mux.Channel, c Codec) {
 	resp := NewResponder(ch, c, header)
 	handler := a.Handler(call.Destination)
 	if handler == nil {
-		resp.Return(errors.New("handler does not exist for this destination"))
+		resp.Return(fmt.Errorf("handler does not exist for this destination: %s", call.Destination))
 		return
 	}
 	handler.ServeRPC(resp, &call)

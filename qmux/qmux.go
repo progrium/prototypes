@@ -498,7 +498,6 @@ func (c *channel) Read(data []byte) (n int, err error) {
 			err = nil
 		}
 	}
-
 	return n, err
 }
 

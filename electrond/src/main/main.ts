@@ -1,20 +1,32 @@
-import { app } from "electron";
+import * as electron from "electron";
+import { app, globalShortcut } from "electron";
 import * as qrpc from "qrpc";
 import * as libmux from "libmux";
 
-import apimodule from "./api";
+import * as rpc from "./rpc";
 
 let listener: any;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise(res => setTimeout(res, ms));
+}
+
 app.on("ready", async () => {
   var api = new qrpc.API();
-  api.handle("dock", qrpc.Export(apimodule.app.dock));
+  rpc.register(api);
   listener = await libmux.ListenWebsocket("localhost:4242");
   var server = new qrpc.Server();
   console.log("serving..."); 
-  console.log(apimodule.app.dock);
+  //loop()
   await server.serve(listener, api);
 });
+
+async function loop() {
+  while (true) {
+    console.log("ping")
+    await sleep(3000)
+  }
+}
 
 // Quit when all windows are closed.
 app.on("window-all-closed", () => {

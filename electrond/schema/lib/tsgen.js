@@ -6,29 +6,35 @@ module.exports = class Generator {
     }
 
     decl(...args) {
-        var blockFn
         if (typeof args[args.length-1] == "function") {
-            blockFn = args.pop()
-            this.stack.push(this.stmts)
-            this.stmts = []
-            blockFn(this)
-            var blockStmts = this.stmts
-            this.stmts = this.stack.pop()
-            this.stmts.push(args.join(" ")+" {\n"+blockStmts.join("\n")+"\n}\n")
+            var blockFn = args.pop()
+            this.stmts.push(`${args.join(" ")} {\n${this.block(blockFn)}\n}`)
         } else {
-            var semi = ";"
-            if (args[0].startsWith("/")) semi = ""
-            this.stmts.push(args.join(" ")+semi)
+            var line = args.join(" ")
+            var end = (line.startsWith("/") || line.endsWith("}")) ? "" : ";"
+            this.stmts.push(line+end)
         }
     }
 
+    inline() {
+        var stmt = this.stmts.pop()
+        return (stmt.endsWith(";")) ? stmt.slice(0, -1) : stmt
+    }
+
+    export() {
+        this.decl("export", this.inline())
+    }
+
+    async() {
+        this.decl("async", this.inline())
+    }
+
     func(name, args, type, blockFn) {
-        if (type) {
-            type = `: ${type} `
-        } else {
-            type = ""
-        }
-        this.decl("function", `${name}(${(args||[]).join(", ")})`+type, blockFn)
+        this.decl("function", `${name}${this.signature(args, type)}`, blockFn)
+    }
+
+    call(name, ...args) {
+        this.decl(`${name}(${(args||[]).join(", ")})`)
     }
 
     comment(str) {
@@ -39,15 +45,47 @@ module.exports = class Generator {
         this.decl("/**\n * "+(str||"").split("\n").join("\n * ")+"\n */")
     }
 
+    block(blockFn) {
+        this.stack.push(this.stmts)
+        this.stmts = []
+        blockFn(this)
+        var blockStmts = this.stmts
+        this.stmts = this.stack.pop()
+        return blockStmts.join("\n")
+    }
+
+    signature(args, type) {
+        return `(${(args||[]).join(", ")})${(type) ? `: ${type} ` : ""}`
+    }
+
     str(v) {
         return `"${v}"`
     }
 
-    var(name, type, value) {
-        if (value) {
-            return `${name}: ${type} = ${value}`
+    arr(...args) {
+        return `[${args.join(", ")}]`
+    }
+
+    idx(name, key) {
+        return `${name}[${key}]`
+    }
+
+    chain(...args) {
+        return args.join(".")
+    }
+
+    lambda(...args) {
+        var async = ""
+        if (args[0] === "async") {
+            async = args.shift()+" "
         }
-        return `${name}: ${type}`
+        var blockFn = args.pop()
+        var type = args.pop()
+        return `${async}${this.signature(args, type)} => {\n${this.block(blockFn)}\n}`
+    }
+
+    var(name, type, value) {
+        return (value) ? `${name}: ${type} = ${value}` : `${name}: ${type}`
     }
 
     toString() {

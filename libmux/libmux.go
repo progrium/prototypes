@@ -277,7 +277,6 @@ func ChannelWrite(id int32, buf *C.uchar, len int32) int32 {
 		return refs.StoreErr(fmt.Errorf(errTypeFmt, "ChannelWrite"))
 	}
 	b := (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]
-
 	n, err := ch.Write(b)
 	if err != nil {
 		if err == io.EOF {

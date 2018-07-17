@@ -374,8 +374,469 @@
                 }
               ],
               "type": "Function"
+            },
+            {
+              "name": "setIcon",
+              "signature": "(image)",
+              "platforms": [
+                "macOS"
+              ],
+              "description": "Sets the image associated with this dock icon.",
+              "parameters": [
+                {
+                  "name": "image",
+                  "type": [
+                    {
+                      "typeName": "NativeImage",
+                      "collection": false
+                    },
+                    {
+                      "typeName": "String",
+                      "collection": false
+                    }
+                  ],
+                  "collection": false,
+                  "required": true
+                }
+              ],
+              "type": "Function"
+            }
+          ],
+          "path": "app.dock",
+          "methods": [
+            {
+              "name": "bounce",
+              "signature": "([type])",
+              "platforms": [
+                "macOS"
+              ],
+              "description": "When critical is passed, the dock icon will bounce until either the application becomes active or the request is canceled. When informational is passed, the dock icon will bounce for one second. However, the request remains active until either the application becomes active or the request is canceled.",
+              "parameters": [
+                {
+                  "name": "type",
+                  "type": "String",
+                  "collection": false,
+                  "description": "Can be `critical` or `informational`. The default is `informational`",
+                  "required": false,
+                  "possibleValues": [
+                    {
+                      "value": "critical"
+                    },
+                    {
+                      "value": "informational"
+                    }
+                  ]
+                }
+              ],
+              "returns": {
+                "type": "Integer",
+                "collection": false,
+                "description": "an ID representing the request."
+              },
+              "type": "Function"
+            },
+            {
+              "name": "cancelBounce",
+              "signature": "(id)",
+              "platforms": [
+                "macOS"
+              ],
+              "description": "Cancel the bounce of id.",
+              "parameters": [
+                {
+                  "name": "id",
+                  "type": "Integer",
+                  "collection": false,
+                  "required": true
+                }
+              ],
+              "type": "Function"
+            },
+            {
+              "name": "downloadFinished",
+              "signature": "(filePath)",
+              "platforms": [
+                "macOS"
+              ],
+              "description": "Bounces the Downloads stack if the filePath is inside the Downloads folder.",
+              "parameters": [
+                {
+                  "name": "filePath",
+                  "type": "String",
+                  "collection": false,
+                  "required": true
+                }
+              ],
+              "type": "Function"
+            },
+            {
+              "name": "setBadge",
+              "signature": "(text)",
+              "platforms": [
+                "macOS"
+              ],
+              "description": "Sets the string to be displayed in the dock’s badging area.",
+              "parameters": [
+                {
+                  "name": "text",
+                  "type": "String",
+                  "collection": false,
+                  "required": true
+                }
+              ],
+              "type": "Function"
+            },
+            {
+              "name": "getBadge",
+              "signature": "()",
+              "platforms": [
+                "macOS"
+              ],
+              "returns": {
+                "type": "String",
+                "collection": false,
+                "description": "The badge string of the dock."
+              },
+              "type": "Function"
+            },
+            {
+              "name": "hide",
+              "signature": "()",
+              "platforms": [
+                "macOS"
+              ],
+              "description": "Hides the dock icon.",
+              "type": "Function"
+            },
+            {
+              "name": "show",
+              "signature": "()",
+              "platforms": [
+                "macOS"
+              ],
+              "description": "Shows the dock icon.",
+              "type": "Function"
+            },
+            {
+              "name": "isVisible",
+              "signature": "()",
+              "platforms": [
+                "macOS"
+              ],
+              "returns": {
+                "type": "Boolean",
+                "collection": false,
+                "description": "Whether the dock icon is visible. The app.dock.show() call is asynchronous so this method might not return true immediately after that call."
+              },
+              "type": "Function"
             }
           ]
+        }
+      ],
+      "path": "app"
+    },
+    {
+      "name": "dock",
+      "type": "Object",
+      "required": true,
+      "properties": [
+        {
+          "name": "bounce",
+          "signature": "([type])",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "When critical is passed, the dock icon will bounce until either the application becomes active or the request is canceled. When informational is passed, the dock icon will bounce for one second. However, the request remains active until either the application becomes active or the request is canceled.",
+          "parameters": [
+            {
+              "name": "type",
+              "type": "String",
+              "collection": false,
+              "description": "Can be `critical` or `informational`. The default is `informational`",
+              "required": false,
+              "possibleValues": [
+                {
+                  "value": "critical"
+                },
+                {
+                  "value": "informational"
+                }
+              ]
+            }
+          ],
+          "returns": {
+            "type": "Integer",
+            "collection": false,
+            "description": "an ID representing the request."
+          },
+          "type": "Function"
+        },
+        {
+          "name": "cancelBounce",
+          "signature": "(id)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Cancel the bounce of id.",
+          "parameters": [
+            {
+              "name": "id",
+              "type": "Integer",
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        },
+        {
+          "name": "downloadFinished",
+          "signature": "(filePath)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Bounces the Downloads stack if the filePath is inside the Downloads folder.",
+          "parameters": [
+            {
+              "name": "filePath",
+              "type": "String",
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        },
+        {
+          "name": "setBadge",
+          "signature": "(text)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Sets the string to be displayed in the dock’s badging area.",
+          "parameters": [
+            {
+              "name": "text",
+              "type": "String",
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        },
+        {
+          "name": "getBadge",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "returns": {
+            "type": "String",
+            "collection": false,
+            "description": "The badge string of the dock."
+          },
+          "type": "Function"
+        },
+        {
+          "name": "hide",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Hides the dock icon.",
+          "type": "Function"
+        },
+        {
+          "name": "show",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Shows the dock icon.",
+          "type": "Function"
+        },
+        {
+          "name": "isVisible",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "returns": {
+            "type": "Boolean",
+            "collection": false,
+            "description": "Whether the dock icon is visible. The app.dock.show() call is asynchronous so this method might not return true immediately after that call."
+          },
+          "type": "Function"
+        },
+        {
+          "name": "setMenu",
+          "signature": "(menu)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Sets the application's dock menu.",
+          "parameters": [
+            {
+              "name": "menu",
+              "type": "Menu",
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        },
+        {
+          "name": "setIcon",
+          "signature": "(image)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Sets the image associated with this dock icon.",
+          "parameters": [
+            {
+              "name": "image",
+              "type": [
+                {
+                  "typeName": "NativeImage",
+                  "collection": false
+                },
+                {
+                  "typeName": "String",
+                  "collection": false
+                }
+              ],
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        }
+      ],
+      "path": "app.dock",
+      "methods": [
+        {
+          "name": "bounce",
+          "signature": "([type])",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "When critical is passed, the dock icon will bounce until either the application becomes active or the request is canceled. When informational is passed, the dock icon will bounce for one second. However, the request remains active until either the application becomes active or the request is canceled.",
+          "parameters": [
+            {
+              "name": "type",
+              "type": "String",
+              "collection": false,
+              "description": "Can be `critical` or `informational`. The default is `informational`",
+              "required": false,
+              "possibleValues": [
+                {
+                  "value": "critical"
+                },
+                {
+                  "value": "informational"
+                }
+              ]
+            }
+          ],
+          "returns": {
+            "type": "Integer",
+            "collection": false,
+            "description": "an ID representing the request."
+          },
+          "type": "Function"
+        },
+        {
+          "name": "cancelBounce",
+          "signature": "(id)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Cancel the bounce of id.",
+          "parameters": [
+            {
+              "name": "id",
+              "type": "Integer",
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        },
+        {
+          "name": "downloadFinished",
+          "signature": "(filePath)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Bounces the Downloads stack if the filePath is inside the Downloads folder.",
+          "parameters": [
+            {
+              "name": "filePath",
+              "type": "String",
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        },
+        {
+          "name": "setBadge",
+          "signature": "(text)",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Sets the string to be displayed in the dock’s badging area.",
+          "parameters": [
+            {
+              "name": "text",
+              "type": "String",
+              "collection": false,
+              "required": true
+            }
+          ],
+          "type": "Function"
+        },
+        {
+          "name": "getBadge",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "returns": {
+            "type": "String",
+            "collection": false,
+            "description": "The badge string of the dock."
+          },
+          "type": "Function"
+        },
+        {
+          "name": "hide",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Hides the dock icon.",
+          "type": "Function"
+        },
+        {
+          "name": "show",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "description": "Shows the dock icon.",
+          "type": "Function"
+        },
+        {
+          "name": "isVisible",
+          "signature": "()",
+          "platforms": [
+            "macOS"
+          ],
+          "returns": {
+            "type": "Boolean",
+            "collection": false,
+            "description": "Whether the dock icon is visible. The app.dock.show() call is asynchronous so this method might not return true immediately after that call."
+          },
+          "type": "Function"
         }
       ]
     },
@@ -624,7 +1085,8 @@
             "description": "An array of supported formats for the clipboard type."
           }
         }
-      ]
+      ],
+      "path": "clipboard"
     },
     {
       "name": "desktopCapturer",
@@ -690,7 +1152,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "desktopCapturer"
     },
     {
       "name": "dialog",
@@ -1060,7 +1523,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "dialog"
     },
     {
       "name": "globalShortcut",
@@ -1125,7 +1589,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "globalShortcut"
     },
     {
       "name": "powerMonitor",
@@ -1186,7 +1651,8 @@
             "Windows"
           ]
         }
-      ]
+      ],
+      "path": "powerMonitor"
     },
     {
       "name": "process",
@@ -1403,7 +1869,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "process"
     },
     {
       "name": "protocol",
@@ -1817,7 +2284,8 @@
             ]
           }
         }
-      ]
+      ],
+      "path": "protocol"
     },
     {
       "name": "screen",
@@ -1932,58 +2400,6 @@
             "type": "Point",
             "collection": false
           }
-        },
-        {
-          "name": "screenToDipRect",
-          "signature": "(window, rect)",
-          "platforms": [
-            "Windows"
-          ],
-          "description": "Converts a screen physical rect to a screen DIP rect. The DPI scale is performed relative to the display nearest to window. If window is null, scaling will be performed to the display nearest to rect.",
-          "parameters": [
-            {
-              "name": "window",
-              "type": "BrowserWindow",
-              "collection": false,
-              "required": true
-            },
-            {
-              "name": "rect",
-              "type": "Rectangle",
-              "collection": false,
-              "required": true
-            }
-          ],
-          "returns": {
-            "type": "Rectangle",
-            "collection": false
-          }
-        },
-        {
-          "name": "dipToScreenRect",
-          "signature": "(window, rect)",
-          "platforms": [
-            "Windows"
-          ],
-          "description": "Converts a screen DIP rect to a screen physical rect. The DPI scale is performed relative to the display nearest to window. If window is null, scaling will be performed to the display nearest to rect.",
-          "parameters": [
-            {
-              "name": "window",
-              "type": "BrowserWindow",
-              "collection": false,
-              "required": true
-            },
-            {
-              "name": "rect",
-              "type": "Rectangle",
-              "collection": false,
-              "required": true
-            }
-          ],
-          "returns": {
-            "type": "Rectangle",
-            "collection": false
-          }
         }
       ],
       "events": [
@@ -2047,7 +2463,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "screen"
     },
     {
       "name": "shell",
@@ -2239,7 +2656,8 @@
             "collection": false
           }
         }
-      ]
+      ],
+      "path": "shell"
     }
   ],
   "classes": [
@@ -2484,7 +2902,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "Menu"
     },
     {
       "name": "MenuItem",
@@ -2692,7 +3111,8 @@
           "type": "Function",
           "collection": false
         }
-      ]
+      ],
+      "path": "MenuItem"
     },
     {
       "name": "NativeImage",
@@ -3001,7 +3421,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "NativeImage"
     },
     {
       "name": "Tray",
@@ -3508,7 +3929,8 @@
             }
           ]
         }
-      ]
+      ],
+      "path": "Tray"
     }
   ],
   "structs": [
@@ -3534,7 +3956,8 @@
           "description": "The number of average idle cpu wakeups per second since the last call to getCPUUsage. First call returns 0. Will always return 0 on Windows.",
           "required": true
         }
-      ]
+      ],
+      "path": "CPUUsage"
     },
     {
       "name": "Display",
@@ -3611,7 +4034,8 @@
           "description": "",
           "required": true
         }
-      ]
+      ],
+      "path": "Display"
     },
     {
       "name": "FileFilter",
@@ -3635,7 +4059,8 @@
           "description": "",
           "required": true
         }
-      ]
+      ],
+      "path": "FileFilter"
     },
     {
       "name": "Point",
@@ -3659,7 +4084,8 @@
           "description": "",
           "required": true
         }
-      ]
+      ],
+      "path": "Point"
     },
     {
       "name": "ProcessMetric",
@@ -3697,7 +4123,8 @@
           "description": "CPU usage of the process.",
           "required": true
         }
-      ]
+      ],
+      "path": "ProcessMetric"
     },
     {
       "name": "Rectangle",
@@ -3735,7 +4162,8 @@
           "description": "The height of the rectangle (must be an integer)",
           "required": true
         }
-      ]
+      ],
+      "path": "Rectangle"
     },
     {
       "name": "ShortcutDetails",
@@ -3794,7 +4222,8 @@
           "description": "The Application User Model ID. Default is empty.",
           "required": false
         }
-      ]
+      ],
+      "path": "ShortcutDetails"
     },
     {
       "name": "Size",
@@ -3818,7 +4247,8 @@
           "description": "",
           "required": true
         }
-      ]
+      ],
+      "path": "Size"
     },
     {
       "name": "MemoryInfo",
@@ -3863,7 +4293,8 @@
           "description": "The amount of memory shared between processes, typically memory consumed by the Electron code itself",
           "required": true
         }
-      ]
+      ],
+      "path": "MemoryInfo"
     },
     {
       "name": "DesktopCapturerSource",
@@ -3901,7 +4332,8 @@
           "description": "A unique identifier that will correspond to the id of the matching returned by the . On some platforms, this is equivalent to the XX portion of the id field above and on others it will differ. It will be an empty string if not available.",
           "required": true
         }
-      ]
+      ],
+      "path": "DesktopCapturerSource"
     },
     {
       "name": "UploadData",
@@ -3932,7 +4364,8 @@
           "description": "UUID of blob data. Use method to retrieve the data.",
           "required": true
         }
-      ]
+      ],
+      "path": "UploadData"
     }
   ],
   "types": [

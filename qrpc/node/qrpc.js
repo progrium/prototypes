@@ -45,7 +45,8 @@ function sleep(ms) {
 }
 function loopYield(name) {
     //console.log(name);
-    return sleep(10);
+    //return sleep(10);
+    return Promise.resolve();
 }
 // only one codec per channel because of read loop!
 var FrameCodec = /** @class */ (function () {
@@ -113,7 +114,7 @@ var FrameCodec = /** @class */ (function () {
                         return [4 /*yield*/, this.channel.write(Buffer.from(sdata.buffer))];
                     case 1:
                         _a.sent();
-                        return [4 /*yield*/, this.channel.write(Buffer.from(buf))];
+                        return [4 /*yield*/, this.channel.write(buf)];
                     case 2:
                         _a.sent();
                         return [2 /*return*/, Promise.resolve()];
@@ -251,6 +252,7 @@ var Call = /** @class */ (function () {
     };
     return Call;
 }());
+exports.Call = Call;
 var Client = /** @class */ (function () {
     function Client(session, api) {
         this.session = session;
@@ -399,7 +401,7 @@ function exportFunc(fn, rcvr) {
                             _b = (_a = r)["return"];
                             return [4 /*yield*/, fn.apply(rcvr, [args])];
                         case 3:
-                            _b.apply(_a, [_c.sent()]);
+                            _b.apply(_a, [((_c.sent()) || null)]);
                             return [3 /*break*/, 5];
                         case 4:
                             e_2 = _c.sent();

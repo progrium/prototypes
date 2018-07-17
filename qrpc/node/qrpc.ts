@@ -1,5 +1,5 @@
 import * as msgpack from "msgpack-lite";
-import { decode } from "punycode";
+import { SSL_OP_CRYPTOPRO_TLSEXT_BUG } from "constants";
 
 interface Session {
 	open(): Promise<Channel>;
@@ -35,7 +35,8 @@ function sleep(ms: number): Promise<void> {
 
 function loopYield(name: string): Promise<void> {
     //console.log(name);
-    return sleep(10);
+    //return sleep(10);
+    return Promise.resolve();
 }
 
 // only one codec per channel because of read loop!
@@ -86,7 +87,7 @@ class FrameCodec {
         var sdata = new DataView(new ArrayBuffer(4));
         sdata.setUint32(0, buf.length);
         await this.channel.write(Buffer.from(sdata.buffer));
-        await this.channel.write(Buffer.from(buf.buffer as ArrayBuffer));
+        await this.channel.write(buf as Buffer);
         return Promise.resolve();
     }
 
@@ -149,7 +150,7 @@ export class API {
     }
 }
 
-interface Responder {
+export interface Responder {
     header: ResponseHeader;
     return(v: any): void;
 }
@@ -184,7 +185,7 @@ interface Caller {
     call(method: string, args: any): Promise<any>;
 }
 
-class Call {
+export class Call {
 	Destination: string;
 	objectPath:  string;
 	method:      string;
@@ -299,7 +300,7 @@ function exportFunc(fn: Function, rcvr: any): Handler {
         serveRPC: async function(r: Responder, c: Call) {
             var args = await c.decode();
             try {
-                r.return(await fn.apply(rcvr, [args]));
+                r.return((await fn.apply(rcvr, [args])||null));
             } catch (e) {
                 switch (typeof e) {
                     case 'string':

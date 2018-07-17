@@ -97,9 +97,12 @@ func (c *Client) ServeAPI() {
 	for {
 		ch, err := c.Session.Accept()
 		if err != nil {
+			if err == io.EOF {
+				return
+			}
 			panic(err)
 		}
-		go c.API.ServeAPI(c.Session, ch, &frameCodec{c.Codec})
+		go c.API.ServeAPI(c.Session, ch, newFrameCodec(c.Codec))
 	}
 }
 

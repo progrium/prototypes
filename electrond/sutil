@@ -57,10 +57,69 @@ switch (process.argv[2]) {
         show(_.uniq(paths))
         break
     
+    case "rpc":
+        var schema = build(loadSchema(schemaPath()))
+        var Generator = require("./schema/lib/tsgen")
+        ts = new Generator()
+
+        methods = {}
+        schema.modules.forEach((mod) => {
+            (mod.methods||[]).forEach((method) => {
+                methods[`${mod.path||mod.name}.${method.name}`] = method
+            })
+        })
+
+        ts.decl("import", "* as electron", "from", ts.str("electron"))
+        ts.decl("import", "* as qrpc", "from", ts.str("qrpc"))
+        ts.decl("import", "* as util", "from", ts.str("./util"))
+        ts.export(ts.func("register", [ts.var("api", "qrpc.API")], null, (ts) => {
+            _.forOwn(methods, (method, methodPath) => {
+                ts.call("api.handleFunc", ts.str(methodPath), ts.lambda("async", ts.var("r", "qrpc.Responder"), ts.var("c", "qrpc.Call"), null, (ts) => {
+                    ts.decl("var", ts.var("obj", "any", ts.inline(ts.call("await c.decode"))));
+                    (method.parameters||[]).filter((param) => param.type === "Function").forEach((param) => {
+                        var cbParam = `obj["${param.name}"]`
+                        ts.decl("var", ts.var(`${param.name}Handle`, "any", cbParam))
+                        ts.decl(cbParam, "=", ts.lambda(null, (ts) => {
+                            ts.decl("try", (ts) => {
+                                ts.call("c.caller.call", `${param.name}Handle.ObjectPath+"/__call__"`, "null")
+                            });
+                            ts.decl("catch(e)", (ts) => {
+                                ts.call("console.log", ts.str("callback to missing session"))
+                            });
+                        }))
+                    });
+                    ts.decl("var", ts.var("args", "any", ts.chain(ts.arr(...(method.parameters||[]).map((param) => ts.str(param.name))), ts.inline(ts.call("map", ts.lambda(ts.var("param", "string"), "any", (ts) => {
+                        ts.decl("return", ts.inline(ts.call("util.argX", ts.idx("(obj||{})", "param"))))
+                    }))))));
+                    if ((method.returns||{})["callbackParam"]) {
+                        ts.decl("var", ts.var("cbArgs", "any", ts.arr((method.returns.properties||[]).map((param) => ts.str(param.name)))))
+
+                    }
+                    
+                    var callObj = ["electron", methodPath]
+                    if (methodPath.startsWith("process.")) {
+                        callObj.shift()
+                    }
+                    ts.call("console.log", ts.str(methodPath), "obj")
+                    ts.decl("try", (ts) => {
+                        ts.decl("var", ts.var("ret", "any", ts.inline(ts.call(`(${callObj.join(".")} as any)`, "...args"))))
+                        ts.call("r.return", "ret")
+                    })
+                    ts.decl("catch(e)", (ts) => {
+                        ts.call("console.log", "e.stack")
+                        ts.call("r.return", "e")
+                    })
+                }))
+            })
+        }))
+
+        console.log(ts.toString())
+        break
+
     case "ts":
         var schema = build(loadSchema(schemaPath()))
-        var Generator = require("./schema/lib/tsgen");
-        ts = new Generator();
+        var Generator = require("./schema/lib/tsgen")
+        ts = new Generator()
         
         schema.types.forEach((t) => {
             ts.decl("class", t, () => {})
@@ -129,7 +188,7 @@ switch (process.argv[2]) {
 function build(schema) {
     var output = {}
     output.modules = _.compact(includes.modules.map((name) => {
-        return walkFindName(schema, name, (el) => el.type == "Module")
+        return walkFindName(schema, name, (el) => ["Object", "Module"].includes(el.type))
     }))
     output.classes = includes.classes.map((name) => {
         return walkFindName(schema, name, (el) => el.type == "Class")
@@ -147,9 +206,9 @@ function build(schema) {
                 })    
             }
             if (obj.properties) {
-                obj.properties = obj.properties.filter((el) => {
-                    return !excludes.methods[n].includes(el.name)
-                })    
+                obj.methods = (obj.methods||[]).concat(obj.properties.filter((el) => {
+                    return !excludes.methods[n].includes(el.name) && el.type == "Function"
+                }))
             }
         }
         if (_.keys(excludes.props).includes(n) && ["Object", "Module"].includes(obj.type)) {
@@ -249,6 +308,7 @@ function walkFindName(obj, name, fn) {
     var found;
     walkNames(obj, (n, v) => {
         if (n == name && v["name"] == parts[0] && fn(v)) {
+            v["path"] = name
             found = v
         }
     })
