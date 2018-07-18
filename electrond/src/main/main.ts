@@ -13,7 +13,9 @@ function sleep(ms: number): Promise<void> {
 
 app.on("ready", async () => {
   var api = new qrpc.API();
-  rpc.register(api);
+  var om = new qrpc.ObjectManager();
+  om.mount(api, "objects")
+  rpc.register(api, om);
   listener = await libmux.ListenWebsocket("localhost:4242");
   var server = new qrpc.Server();
   console.log("serving..."); 

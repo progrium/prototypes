@@ -62,55 +62,94 @@ switch (process.argv[2]) {
         var Generator = require("./schema/lib/tsgen")
         ts = new Generator()
 
-        methods = {}
+        var methods = {}
+        var instanceMethods = {}
         schema.modules.forEach((mod) => {
             (mod.methods||[]).forEach((method) => {
                 methods[`${mod.path||mod.name}.${method.name}`] = method
             })
-        })
+        });
+        schema.classes.forEach((cls) => {
+            (cls.staticMethods||[]).forEach((method) => {
+                methods[`${cls.name}.${method.name}`] = method
+            })
+            if (cls.constructorMethod) {
+                methods[`${cls.name}.make`] = cls.constructorMethod
+            }
+            instanceMethods[cls.name] = [];
+            (cls.instanceMethods||[]).forEach((method) => {
+                instanceMethods[cls.name].push(method)
+            });
+        });
+
+        var generateHandler = (method, methodPath) => {
+            return ts.lambda("async", ts.var("r", "qrpc.Responder"), ts.var("c", "qrpc.Call"), null, (ts) => {
+                ts.decl("var", ts.var("obj", "any", ts.inline(ts.call("await c.decode"))));
+                (method.parameters||[]).filter((param) => param.type === "Function").forEach((param) => {
+                    var cbParam = `obj["${param.name}"]`
+                    ts.decl("var", ts.var(`${param.name}Handle`, "any", cbParam))
+                    ts.decl(cbParam, "=", ts.lambda(null, (ts) => {
+                        ts.decl("try", (ts) => {
+                            ts.call("c.caller.call", `${param.name}Handle.ObjectPath+"/__call__"`, "null")
+                        });
+                        ts.decl("catch(e)", (ts) => {
+                            ts.call("console.log", ts.str("callback to missing session"))
+                        });
+                    }))
+                });
+                ts.decl("var", ts.var("args", "any", ts.chain(ts.arr(...(method.parameters||[]).map((param) => ts.str(param.name))), ts.inline(ts.call("map", ts.lambda(ts.var("param", "string"), "any", (ts) => {
+                    ts.decl("return", ts.inline(ts.call("util.argX", ts.idx("(obj||{})", "param"))))
+                }))))));
+                if ((method.returns||{})["callbackParam"]) {
+                    ts.decl("var", ts.var("cbArgs", "any", ts.arr((method.returns.properties||[]).map((param) => ts.str(param.name)))))
+
+                }
+                ts.call("console.log", "c.Destination", "obj")
+
+                var callObj = ["electron", methodPath]
+                if (methodPath && methodPath.startsWith("process.")) {
+                    callObj.shift()
+                }
+
+                ts.decl("try", (ts) => {
+                    if (!methodPath) { // instance method
+                        ts.decl("var objRef = om.object(c.objectPath)")
+                        ts.decl("var", ts.var("ret", "any", "objRef.value[c.method](...args)"))
+                    } else {
+                        if (methodPath.endsWith(".make")) { // constructor
+                            var className = methodPath.replace(".make", "")
+                            var constructor = callObj.join(".").replace(".make", "")
+                            ts.decl("var", ts.var("newObj", "any", `new (${constructor} as any)(...args)`))
+                            ts.decl("newObj.serveRPC = async (r: qrpc.Responder, c: qrpc.Call) =>", (ts) => {
+                                ts.decl("var handlers = {}");
+                                (instanceMethods[className]||[]).forEach((method) => {
+                                    ts.decl(ts.idx("handlers", ts.str(method.name)), "=", generateHandler(method));
+                                });
+                                ts.decl("handlers[c.method](r, c)");
+                            })
+                            ts.decl("var", ts.var("ret", "any", "om.register(newObj).handle()"))
+                        } else { // module or static method
+                            ts.decl("var", ts.var("ret", "any", `(${callObj.join(".")} as any)(...args)`))
+                        }
+                    }
+                    ts.call("r.return", "ret")
+                })
+                ts.decl("catch(e)", (ts) => {
+                    ts.call("console.log", "e.stack")
+                    ts.call("r.return", "e")
+                })
+            })
+        };
 
         ts.decl("import", "* as electron", "from", ts.str("electron"))
         ts.decl("import", "* as qrpc", "from", ts.str("qrpc"))
         ts.decl("import", "* as util", "from", ts.str("./util"))
-        ts.export(ts.func("register", [ts.var("api", "qrpc.API")], null, (ts) => {
-            _.forOwn(methods, (method, methodPath) => {
-                ts.call("api.handleFunc", ts.str(methodPath), ts.lambda("async", ts.var("r", "qrpc.Responder"), ts.var("c", "qrpc.Call"), null, (ts) => {
-                    ts.decl("var", ts.var("obj", "any", ts.inline(ts.call("await c.decode"))));
-                    (method.parameters||[]).filter((param) => param.type === "Function").forEach((param) => {
-                        var cbParam = `obj["${param.name}"]`
-                        ts.decl("var", ts.var(`${param.name}Handle`, "any", cbParam))
-                        ts.decl(cbParam, "=", ts.lambda(null, (ts) => {
-                            ts.decl("try", (ts) => {
-                                ts.call("c.caller.call", `${param.name}Handle.ObjectPath+"/__call__"`, "null")
-                            });
-                            ts.decl("catch(e)", (ts) => {
-                                ts.call("console.log", ts.str("callback to missing session"))
-                            });
-                        }))
-                    });
-                    ts.decl("var", ts.var("args", "any", ts.chain(ts.arr(...(method.parameters||[]).map((param) => ts.str(param.name))), ts.inline(ts.call("map", ts.lambda(ts.var("param", "string"), "any", (ts) => {
-                        ts.decl("return", ts.inline(ts.call("util.argX", ts.idx("(obj||{})", "param"))))
-                    }))))));
-                    if ((method.returns||{})["callbackParam"]) {
-                        ts.decl("var", ts.var("cbArgs", "any", ts.arr((method.returns.properties||[]).map((param) => ts.str(param.name)))))
+        ts.export(ts.func("register", [ts.var("api", "qrpc.API"), ts.var("om", "qrpc.ObjectManager")], null, (ts) => {
 
-                    }
-                    
-                    var callObj = ["electron", methodPath]
-                    if (methodPath.startsWith("process.")) {
-                        callObj.shift()
-                    }
-                    ts.call("console.log", ts.str(methodPath), "obj")
-                    ts.decl("try", (ts) => {
-                        ts.decl("var", ts.var("ret", "any", ts.inline(ts.call(`(${callObj.join(".")} as any)`, "...args"))))
-                        ts.call("r.return", "ret")
-                    })
-                    ts.decl("catch(e)", (ts) => {
-                        ts.call("console.log", "e.stack")
-                        ts.call("r.return", "e")
-                    })
-                }))
+            _.forOwn(methods, (method, methodPath) => {
+                ts.call("api.handleFunc", ts.str(methodPath), generateHandler(method, methodPath))
             })
+
         }))
 
         console.log(ts.toString())
@@ -198,7 +237,15 @@ function build(schema) {
     })
     output.types = getTypes(schema)
     
+    // MenuItemConstructorOptions is referenced but isn't "real"
+    var optionsParam = walkFindName(schema, "MenuItem.options")
+    var optionsStruct = Object.assign({}, optionsParam) // clone
+    optionsStruct.name = "MenuItemConstructorOptions"
+    optionsStruct.type = "Structure"
+    output.structs.push(optionsStruct);
+
     walkNames(output, (n, obj) => {
+        // EXCLUDES
         if (_.keys(excludes.methods).includes(n) && ["Object", "Module"].includes(obj.type)) {
             if (obj.methods) {
                 obj.methods = obj.methods.filter((el) => {
@@ -232,6 +279,7 @@ function build(schema) {
                 })    
             }
         }
+        // CALLBACK TRANSFORMS
         if ("dialog" === n && "Module" === obj.type) {
             obj.methods = obj.methods.map((m) => {
                 if (["showOpenDialog", "showSaveDialog", "showMessageBox"].includes(m.name)) {

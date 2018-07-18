@@ -393,7 +393,12 @@ export class ObjectManager {
             r.return(new Error("object not registered: "+c.objectPath));
             return;
         }
-        Export(v).serveRPC(r, c);
+        if (typeof v.serveRPC === "function") {
+            v.serveRPC(r, c)
+        } else {
+            Export(v).serveRPC(r, c);
+        }
+        
     }
 
     mount(api: API, path: string) {
@@ -419,5 +424,9 @@ class ManagedObject {
 
     path(): string {
         return [this.manager.mountPath, this.id].join("/");
+    }
+
+    handle(): any {
+        return {"ObjectPath": this.path()};
     }
 }

@@ -24,10 +24,10 @@ process.on("SIGINT", () => {
     }
     electronDev = spawn('./node_modules/.bin/electron', ['./dist/src/main/main.js']);
     electronDev.stdout.on('data', (data) => {
-        console.log(data.toString());
+        console.log(data.toString().trimRight());
     });
     electronDev.stderr.on('data', (data) => {
-        console.log(data.toString());
+        console.log(data.toString().trimRight());
     });
     electronDev.on('exit', (code) => {
         console.log(`Child exited with code ${code}`);

@@ -506,7 +506,12 @@ var ObjectManager = /** @class */ (function () {
                     r["return"](new Error("object not registered: " + c.objectPath));
                     return [2 /*return*/];
                 }
-                Export(v).serveRPC(r, c);
+                if (typeof v.serveRPC === "function") {
+                    v.serveRPC(r, c);
+                }
+                else {
+                    Export(v).serveRPC(r, c);
+                }
                 return [2 /*return*/];
             });
         });
@@ -529,6 +534,9 @@ var ManagedObject = /** @class */ (function () {
     };
     ManagedObject.prototype.path = function () {
         return [this.manager.mountPath, this.id].join("/");
+    };
+    ManagedObject.prototype.handle = function () {
+        return { "ObjectPath": this.path() };
     };
     return ManagedObject;
 }());

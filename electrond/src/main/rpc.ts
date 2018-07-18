@@ -1,13 +1,13 @@
 import * as electron from "electron";
 import * as qrpc from "qrpc";
 import * as util from "./util";
-export function register(api: qrpc.API) {
+export function register(api: qrpc.API, om: qrpc.ObjectManager) {
     api.handleFunc("app.quit", async (r: qrpc.Responder, c: qrpc.Call) => {
         var obj: any = await c.decode();
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.quit", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.quit as any)(...args);
             r.return(ret);
@@ -22,7 +22,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.focus", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.focus as any)(...args);
             r.return(ret);
@@ -37,7 +37,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.hide", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.hide as any)(...args);
             r.return(ret);
@@ -52,7 +52,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.show", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.show as any)(...args);
             r.return(ret);
@@ -67,7 +67,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getAppPath", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.getAppPath as any)(...args);
             r.return(ret);
@@ -82,7 +82,7 @@ export function register(api: qrpc.API) {
         var args: any = ["name"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getPath", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.getPath as any)(...args);
             r.return(ret);
@@ -106,7 +106,7 @@ export function register(api: qrpc.API) {
         var args: any = ["path", "options", "callback"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getFileIcon", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.getFileIcon as any)(...args);
             r.return(ret);
@@ -121,7 +121,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getVersion", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.getVersion as any)(...args);
             r.return(ret);
@@ -136,7 +136,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getLocale", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.getLocale as any)(...args);
             r.return(ret);
@@ -151,7 +151,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getAppMetrics", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.getAppMetrics as any)(...args);
             r.return(ret);
@@ -166,7 +166,7 @@ export function register(api: qrpc.API) {
         var args: any = ["count"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.setBadgeCount", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.setBadgeCount as any)(...args);
             r.return(ret);
@@ -181,7 +181,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getBadgeCount", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.getBadgeCount as any)(...args);
             r.return(ret);
@@ -196,7 +196,7 @@ export function register(api: qrpc.API) {
         var args: any = ["type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.bounce", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.bounce as any)(...args);
             r.return(ret);
@@ -211,7 +211,7 @@ export function register(api: qrpc.API) {
         var args: any = ["id"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.cancelBounce", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.cancelBounce as any)(...args);
             r.return(ret);
@@ -226,7 +226,7 @@ export function register(api: qrpc.API) {
         var args: any = ["filePath"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.downloadFinished", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.downloadFinished as any)(...args);
             r.return(ret);
@@ -241,7 +241,7 @@ export function register(api: qrpc.API) {
         var args: any = ["text"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.setBadge", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.setBadge as any)(...args);
             r.return(ret);
@@ -256,7 +256,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.getBadge", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.getBadge as any)(...args);
             r.return(ret);
@@ -271,7 +271,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.hide", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.hide as any)(...args);
             r.return(ret);
@@ -286,7 +286,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.show", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.show as any)(...args);
             r.return(ret);
@@ -301,7 +301,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.isVisible", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.app.dock.isVisible as any)(...args);
             r.return(ret);
@@ -316,7 +316,7 @@ export function register(api: qrpc.API) {
         var args: any = ["type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readText", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.readText as any)(...args);
             r.return(ret);
@@ -331,7 +331,7 @@ export function register(api: qrpc.API) {
         var args: any = ["text", "type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeText", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.writeText as any)(...args);
             r.return(ret);
@@ -346,7 +346,7 @@ export function register(api: qrpc.API) {
         var args: any = ["type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readHTML", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.readHTML as any)(...args);
             r.return(ret);
@@ -361,7 +361,7 @@ export function register(api: qrpc.API) {
         var args: any = ["markup", "type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeHTML", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.writeHTML as any)(...args);
             r.return(ret);
@@ -376,7 +376,7 @@ export function register(api: qrpc.API) {
         var args: any = ["type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readImage", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.readImage as any)(...args);
             r.return(ret);
@@ -391,7 +391,7 @@ export function register(api: qrpc.API) {
         var args: any = ["image", "type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeImage", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.writeImage as any)(...args);
             r.return(ret);
@@ -406,7 +406,7 @@ export function register(api: qrpc.API) {
         var args: any = ["type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readRTF", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.readRTF as any)(...args);
             r.return(ret);
@@ -421,7 +421,7 @@ export function register(api: qrpc.API) {
         var args: any = ["text", "type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeRTF", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.writeRTF as any)(...args);
             r.return(ret);
@@ -436,7 +436,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readBookmark", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.readBookmark as any)(...args);
             r.return(ret);
@@ -451,7 +451,7 @@ export function register(api: qrpc.API) {
         var args: any = ["title", "url", "type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeBookmark", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.writeBookmark as any)(...args);
             r.return(ret);
@@ -466,7 +466,7 @@ export function register(api: qrpc.API) {
         var args: any = ["type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.clear", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.clear as any)(...args);
             r.return(ret);
@@ -481,7 +481,7 @@ export function register(api: qrpc.API) {
         var args: any = ["type"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.availableFormats", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.clipboard.availableFormats as any)(...args);
             r.return(ret);
@@ -505,7 +505,7 @@ export function register(api: qrpc.API) {
         var args: any = ["options", "callback"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("desktopCapturer.getSources", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.desktopCapturer.getSources as any)(...args);
             r.return(ret);
@@ -521,7 +521,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["filePaths", "bookmarks"];
-        console.log("dialog.showOpenDialog", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.dialog.showOpenDialog as any)(...args);
             r.return(ret);
@@ -537,7 +537,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["filename", "bookmark"];
-        console.log("dialog.showSaveDialog", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.dialog.showSaveDialog as any)(...args);
             r.return(ret);
@@ -553,7 +553,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["response", "checkboxChecked"];
-        console.log("dialog.showMessageBox", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.dialog.showMessageBox as any)(...args);
             r.return(ret);
@@ -568,7 +568,7 @@ export function register(api: qrpc.API) {
         var args: any = ["title", "content"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("dialog.showErrorBox", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.dialog.showErrorBox as any)(...args);
             r.return(ret);
@@ -592,7 +592,7 @@ export function register(api: qrpc.API) {
         var args: any = ["accelerator", "callback"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("globalShortcut.register", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.globalShortcut.register as any)(...args);
             r.return(ret);
@@ -607,7 +607,7 @@ export function register(api: qrpc.API) {
         var args: any = ["accelerator"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("globalShortcut.isRegistered", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.globalShortcut.isRegistered as any)(...args);
             r.return(ret);
@@ -622,7 +622,7 @@ export function register(api: qrpc.API) {
         var args: any = ["accelerator"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("globalShortcut.unregister", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.globalShortcut.unregister as any)(...args);
             r.return(ret);
@@ -637,7 +637,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getCPUUsage", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (process.getCPUUsage as any)(...args);
             r.return(ret);
@@ -652,7 +652,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getHeapStatistics", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (process.getHeapStatistics as any)(...args);
             r.return(ret);
@@ -667,7 +667,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getProcessMemoryInfo", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (process.getProcessMemoryInfo as any)(...args);
             r.return(ret);
@@ -682,7 +682,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getSystemMemoryInfo", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (process.getSystemMemoryInfo as any)(...args);
             r.return(ret);
@@ -697,7 +697,7 @@ export function register(api: qrpc.API) {
         var args: any = ["schemes", "options"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("protocol.registerStandardSchemes", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.protocol.registerStandardSchemes as any)(...args);
             r.return(ret);
@@ -722,7 +722,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["error"];
-        console.log("protocol.registerFileProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.protocol.registerFileProtocol as any)(...args);
             r.return(ret);
@@ -747,7 +747,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["error"];
-        console.log("protocol.registerStringProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.protocol.registerStringProtocol as any)(...args);
             r.return(ret);
@@ -772,7 +772,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["error"];
-        console.log("protocol.registerHttpProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.protocol.registerHttpProtocol as any)(...args);
             r.return(ret);
@@ -788,7 +788,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["error"];
-        console.log("protocol.unregisterProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.protocol.unregisterProtocol as any)(...args);
             r.return(ret);
@@ -804,7 +804,7 @@ export function register(api: qrpc.API) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs: any = ["error"];
-        console.log("protocol.isProtocolHandled", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.protocol.isProtocolHandled as any)(...args);
             r.return(ret);
@@ -819,7 +819,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getCursorScreenPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.screen.getCursorScreenPoint as any)(...args);
             r.return(ret);
@@ -834,7 +834,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getPrimaryDisplay", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.screen.getPrimaryDisplay as any)(...args);
             r.return(ret);
@@ -849,7 +849,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getAllDisplays", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.screen.getAllDisplays as any)(...args);
             r.return(ret);
@@ -864,7 +864,7 @@ export function register(api: qrpc.API) {
         var args: any = ["point"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getDisplayNearestPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.screen.getDisplayNearestPoint as any)(...args);
             r.return(ret);
@@ -879,7 +879,7 @@ export function register(api: qrpc.API) {
         var args: any = ["rect"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getDisplayMatching", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.screen.getDisplayMatching as any)(...args);
             r.return(ret);
@@ -894,7 +894,7 @@ export function register(api: qrpc.API) {
         var args: any = ["point"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.screenToDipPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.screen.screenToDipPoint as any)(...args);
             r.return(ret);
@@ -909,7 +909,7 @@ export function register(api: qrpc.API) {
         var args: any = ["point"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.dipToScreenPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.screen.dipToScreenPoint as any)(...args);
             r.return(ret);
@@ -924,7 +924,7 @@ export function register(api: qrpc.API) {
         var args: any = ["fullPath"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.showItemInFolder", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.shell.showItemInFolder as any)(...args);
             r.return(ret);
@@ -939,7 +939,7 @@ export function register(api: qrpc.API) {
         var args: any = ["fullPath"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.openItem", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.shell.openItem as any)(...args);
             r.return(ret);
@@ -963,7 +963,7 @@ export function register(api: qrpc.API) {
         var args: any = ["url", "options", "callback"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.openExternal", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.shell.openExternal as any)(...args);
             r.return(ret);
@@ -978,7 +978,7 @@ export function register(api: qrpc.API) {
         var args: any = ["fullPath"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.moveItemToTrash", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.shell.moveItemToTrash as any)(...args);
             r.return(ret);
@@ -993,7 +993,7 @@ export function register(api: qrpc.API) {
         var args: any = [].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.beep", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.shell.beep as any)(...args);
             r.return(ret);
@@ -1008,7 +1008,7 @@ export function register(api: qrpc.API) {
         var args: any = ["shortcutPath", "operation", "options"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.writeShortcutLink", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.shell.writeShortcutLink as any)(...args);
             r.return(ret);
@@ -1023,9 +1023,569 @@ export function register(api: qrpc.API) {
         var args: any = ["shortcutPath"].map((param: string): any => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.readShortcutLink", obj);
+        console.log(c.Destination, obj);
         try {
             var ret: any = (electron.shell.readShortcutLink as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("nativeImage.createEmpty", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = [].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.nativeImage.createEmpty as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("nativeImage.createFromPath", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["path"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj: any = (electron.nativeImage.createFromPath as any)(...args);
+			var ret: any = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("nativeImage.createFromBuffer", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["buffer", "options"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.nativeImage.createFromBuffer as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("nativeImage.createFromDataURL", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["dataURL"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.nativeImage.createFromDataURL as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("nativeImage.createFromNamedImage", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["imageName", "hslShift"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.nativeImage.createFromNamedImage as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Menu.setApplicationMenu", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["menu"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.Menu.setApplicationMenu as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Menu.getApplicationMenu", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = [].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.Menu.getApplicationMenu as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Menu.sendActionToFirstResponder", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["action"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.Menu.sendActionToFirstResponder as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Menu.buildFromTemplate", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["template"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        if (args[0][0]["click"]) {
+            var callbackHandle: any = args[0][0]["click"];
+            args[0][0]["click"] = () => {
+                c.caller.call(callbackHandle.ObjectPath + "/__call__", null);
+            };
+        }
+        console.log(c.Destination, obj);
+        try {
+            var newObj: any = (electron.Menu.buildFromTemplate as any)(...args);
+		    var ret: any = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Menu.make", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = [].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj: any = new (electron.Menu as any)(...args);
+            newObj.serveRPC = async (r: qrpc.Responder, c: qrpc.Call) => {
+                var handlers = {}
+                handlers["popup"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["options"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["closePopup"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["browserWindow"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["append"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["menuItem"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["getMenuItemById"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["id"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["insert"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["pos", "menuItem"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers[c.method](r, c);
+            }
+            var ret: any = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("MenuItem.make", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["options"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj: any = new (electron.MenuItem as any)(...args);
+            newObj.serveRPC = async (r: qrpc.Responder, c: qrpc.Call) => {
+                var handlers = {}
+                handlers[c.method](r, c);
+            }
+            var ret: any = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Tray.make", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["image"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        args[0] = om.object(args[0].ObjectPath).value;
+        console.log(c.Destination, obj);
+        try {
+            var newObj: any = new (electron.Tray as any)(...args);
+            newObj.serveRPC = async (r: qrpc.Responder, c: qrpc.Call) => {
+                var handlers = {}
+                handlers["destroy"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = [].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["setImage"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["image"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["setPressedImage"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["image"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["setToolTip"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["toolTip"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["setTitle"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["title"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["setHighlightMode"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["mode"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["setIgnoreDoubleClickEvents"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["ignore"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["getIgnoreDoubleClickEvents"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = [].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["displayBalloon"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["options"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["popUpContextMenu"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["menu", "position"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["setContextMenu"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = ["menu"].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    args[0] = om.object(args[0].ObjectPath).value;
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["getBounds"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = [].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["isDestroyed"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = [].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers[c.method](r, c);
+            }
+            var ret: any = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Notification.isSupported", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = [].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret: any = (electron.Notification.isSupported as any)(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    });
+    api.handleFunc("Notification.make", async (r: qrpc.Responder, c: qrpc.Call) => {
+        var obj: any = await c.decode();
+        var args: any = ["options"].map((param: string): any => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj: any = new (electron.Notification as any)(...args);
+            newObj.serveRPC = async (r: qrpc.Responder, c: qrpc.Call) => {
+                var handlers = {}
+                handlers["show"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = [].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers["close"] = async (r: qrpc.Responder, c: qrpc.Call) => {
+                    var obj: any = await c.decode();
+                    var args: any = [].map((param: string): any => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret: any = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                }
+                handlers[c.method](r, c);
+            }
+            var ret: any = om.register(newObj).handle();
             r.return(ret);
         }
         catch (e) {

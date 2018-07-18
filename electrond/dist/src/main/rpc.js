@@ -10,13 +10,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron = require("electron");
 const util = require("./util");
-function register(api) {
+function register(api, om) {
     api.handleFunc("app.quit", (r, c) => __awaiter(this, void 0, void 0, function* () {
         var obj = yield c.decode();
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.quit", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.quit(...args);
             r.return(ret);
@@ -31,7 +31,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.focus", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.focus(...args);
             r.return(ret);
@@ -46,7 +46,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.hide", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.hide(...args);
             r.return(ret);
@@ -61,7 +61,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.show", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.show(...args);
             r.return(ret);
@@ -76,7 +76,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getAppPath", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.getAppPath(...args);
             r.return(ret);
@@ -91,7 +91,7 @@ function register(api) {
         var args = ["name"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getPath", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.getPath(...args);
             r.return(ret);
@@ -115,7 +115,7 @@ function register(api) {
         var args = ["path", "options", "callback"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getFileIcon", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.getFileIcon(...args);
             r.return(ret);
@@ -130,7 +130,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getVersion", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.getVersion(...args);
             r.return(ret);
@@ -145,7 +145,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getLocale", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.getLocale(...args);
             r.return(ret);
@@ -160,7 +160,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getAppMetrics", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.getAppMetrics(...args);
             r.return(ret);
@@ -175,7 +175,7 @@ function register(api) {
         var args = ["count"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.setBadgeCount", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.setBadgeCount(...args);
             r.return(ret);
@@ -190,7 +190,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.getBadgeCount", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.getBadgeCount(...args);
             r.return(ret);
@@ -205,7 +205,7 @@ function register(api) {
         var args = ["type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.bounce", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.bounce(...args);
             r.return(ret);
@@ -220,7 +220,7 @@ function register(api) {
         var args = ["id"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.cancelBounce", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.cancelBounce(...args);
             r.return(ret);
@@ -235,7 +235,7 @@ function register(api) {
         var args = ["filePath"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.downloadFinished", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.downloadFinished(...args);
             r.return(ret);
@@ -250,7 +250,7 @@ function register(api) {
         var args = ["text"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.setBadge", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.setBadge(...args);
             r.return(ret);
@@ -265,7 +265,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.getBadge", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.getBadge(...args);
             r.return(ret);
@@ -280,7 +280,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.hide", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.hide(...args);
             r.return(ret);
@@ -295,7 +295,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.show", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.show(...args);
             r.return(ret);
@@ -310,7 +310,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("app.dock.isVisible", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.app.dock.isVisible(...args);
             r.return(ret);
@@ -325,7 +325,7 @@ function register(api) {
         var args = ["type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readText", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.readText(...args);
             r.return(ret);
@@ -340,7 +340,7 @@ function register(api) {
         var args = ["text", "type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeText", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.writeText(...args);
             r.return(ret);
@@ -355,7 +355,7 @@ function register(api) {
         var args = ["type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readHTML", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.readHTML(...args);
             r.return(ret);
@@ -370,7 +370,7 @@ function register(api) {
         var args = ["markup", "type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeHTML", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.writeHTML(...args);
             r.return(ret);
@@ -385,7 +385,7 @@ function register(api) {
         var args = ["type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readImage", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.readImage(...args);
             r.return(ret);
@@ -400,7 +400,7 @@ function register(api) {
         var args = ["image", "type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeImage", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.writeImage(...args);
             r.return(ret);
@@ -415,7 +415,7 @@ function register(api) {
         var args = ["type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readRTF", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.readRTF(...args);
             r.return(ret);
@@ -430,7 +430,7 @@ function register(api) {
         var args = ["text", "type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeRTF", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.writeRTF(...args);
             r.return(ret);
@@ -445,7 +445,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.readBookmark", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.readBookmark(...args);
             r.return(ret);
@@ -460,7 +460,7 @@ function register(api) {
         var args = ["title", "url", "type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.writeBookmark", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.writeBookmark(...args);
             r.return(ret);
@@ -475,7 +475,7 @@ function register(api) {
         var args = ["type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.clear", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.clear(...args);
             r.return(ret);
@@ -490,7 +490,7 @@ function register(api) {
         var args = ["type"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("clipboard.availableFormats", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.clipboard.availableFormats(...args);
             r.return(ret);
@@ -514,7 +514,7 @@ function register(api) {
         var args = ["options", "callback"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("desktopCapturer.getSources", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.desktopCapturer.getSources(...args);
             r.return(ret);
@@ -530,7 +530,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["filePaths", "bookmarks"];
-        console.log("dialog.showOpenDialog", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.dialog.showOpenDialog(...args);
             r.return(ret);
@@ -546,7 +546,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["filename", "bookmark"];
-        console.log("dialog.showSaveDialog", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.dialog.showSaveDialog(...args);
             r.return(ret);
@@ -562,7 +562,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["response", "checkboxChecked"];
-        console.log("dialog.showMessageBox", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.dialog.showMessageBox(...args);
             r.return(ret);
@@ -577,7 +577,7 @@ function register(api) {
         var args = ["title", "content"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("dialog.showErrorBox", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.dialog.showErrorBox(...args);
             r.return(ret);
@@ -601,7 +601,7 @@ function register(api) {
         var args = ["accelerator", "callback"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("globalShortcut.register", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.globalShortcut.register(...args);
             r.return(ret);
@@ -616,7 +616,7 @@ function register(api) {
         var args = ["accelerator"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("globalShortcut.isRegistered", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.globalShortcut.isRegistered(...args);
             r.return(ret);
@@ -631,7 +631,7 @@ function register(api) {
         var args = ["accelerator"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("globalShortcut.unregister", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.globalShortcut.unregister(...args);
             r.return(ret);
@@ -646,7 +646,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getCPUUsage", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = process.getCPUUsage(...args);
             r.return(ret);
@@ -661,7 +661,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getHeapStatistics", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = process.getHeapStatistics(...args);
             r.return(ret);
@@ -676,7 +676,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getProcessMemoryInfo", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = process.getProcessMemoryInfo(...args);
             r.return(ret);
@@ -691,7 +691,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("process.getSystemMemoryInfo", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = process.getSystemMemoryInfo(...args);
             r.return(ret);
@@ -706,7 +706,7 @@ function register(api) {
         var args = ["schemes", "options"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("protocol.registerStandardSchemes", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.protocol.registerStandardSchemes(...args);
             r.return(ret);
@@ -731,7 +731,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["error"];
-        console.log("protocol.registerFileProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.protocol.registerFileProtocol(...args);
             r.return(ret);
@@ -756,7 +756,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["error"];
-        console.log("protocol.registerStringProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.protocol.registerStringProtocol(...args);
             r.return(ret);
@@ -781,7 +781,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["error"];
-        console.log("protocol.registerHttpProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.protocol.registerHttpProtocol(...args);
             r.return(ret);
@@ -797,7 +797,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["error"];
-        console.log("protocol.unregisterProtocol", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.protocol.unregisterProtocol(...args);
             r.return(ret);
@@ -813,7 +813,7 @@ function register(api) {
             return util.argX((obj || {})[param]);
         });
         var cbArgs = ["error"];
-        console.log("protocol.isProtocolHandled", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.protocol.isProtocolHandled(...args);
             r.return(ret);
@@ -828,7 +828,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getCursorScreenPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.screen.getCursorScreenPoint(...args);
             r.return(ret);
@@ -843,7 +843,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getPrimaryDisplay", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.screen.getPrimaryDisplay(...args);
             r.return(ret);
@@ -858,7 +858,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getAllDisplays", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.screen.getAllDisplays(...args);
             r.return(ret);
@@ -873,7 +873,7 @@ function register(api) {
         var args = ["point"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getDisplayNearestPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.screen.getDisplayNearestPoint(...args);
             r.return(ret);
@@ -888,7 +888,7 @@ function register(api) {
         var args = ["rect"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.getDisplayMatching", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.screen.getDisplayMatching(...args);
             r.return(ret);
@@ -903,7 +903,7 @@ function register(api) {
         var args = ["point"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.screenToDipPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.screen.screenToDipPoint(...args);
             r.return(ret);
@@ -918,7 +918,7 @@ function register(api) {
         var args = ["point"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("screen.dipToScreenPoint", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.screen.dipToScreenPoint(...args);
             r.return(ret);
@@ -933,7 +933,7 @@ function register(api) {
         var args = ["fullPath"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.showItemInFolder", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.shell.showItemInFolder(...args);
             r.return(ret);
@@ -948,7 +948,7 @@ function register(api) {
         var args = ["fullPath"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.openItem", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.shell.openItem(...args);
             r.return(ret);
@@ -972,7 +972,7 @@ function register(api) {
         var args = ["url", "options", "callback"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.openExternal", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.shell.openExternal(...args);
             r.return(ret);
@@ -987,7 +987,7 @@ function register(api) {
         var args = ["fullPath"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.moveItemToTrash", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.shell.moveItemToTrash(...args);
             r.return(ret);
@@ -1002,7 +1002,7 @@ function register(api) {
         var args = [].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.beep", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.shell.beep(...args);
             r.return(ret);
@@ -1017,7 +1017,7 @@ function register(api) {
         var args = ["shortcutPath", "operation", "options"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.writeShortcutLink", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.shell.writeShortcutLink(...args);
             r.return(ret);
@@ -1032,9 +1032,569 @@ function register(api) {
         var args = ["shortcutPath"].map((param) => {
             return util.argX((obj || {})[param]);
         });
-        console.log("shell.readShortcutLink", obj);
+        console.log(c.Destination, obj);
         try {
             var ret = electron.shell.readShortcutLink(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("nativeImage.createEmpty", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = [].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.nativeImage.createEmpty(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("nativeImage.createFromPath", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["path"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj = electron.nativeImage.createFromPath(...args);
+            var ret = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("nativeImage.createFromBuffer", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["buffer", "options"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.nativeImage.createFromBuffer(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("nativeImage.createFromDataURL", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["dataURL"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.nativeImage.createFromDataURL(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("nativeImage.createFromNamedImage", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["imageName", "hslShift"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.nativeImage.createFromNamedImage(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Menu.setApplicationMenu", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["menu"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.Menu.setApplicationMenu(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Menu.getApplicationMenu", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = [].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.Menu.getApplicationMenu(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Menu.sendActionToFirstResponder", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["action"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.Menu.sendActionToFirstResponder(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Menu.buildFromTemplate", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["template"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        if (args[0][0]["click"]) {
+            var callbackHandle = args[0][0]["click"];
+            args[0][0]["click"] = () => {
+                c.caller.call(callbackHandle.ObjectPath + "/__call__", null);
+            };
+        }
+        console.log(c.Destination, obj);
+        try {
+            var newObj = electron.Menu.buildFromTemplate(...args);
+            var ret = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Menu.make", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = [].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj = new electron.Menu(...args);
+            newObj.serveRPC = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                var handlers = {};
+                handlers["popup"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["options"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["closePopup"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["browserWindow"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["append"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["menuItem"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["getMenuItemById"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["id"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["insert"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["pos", "menuItem"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers[c.method](r, c);
+            });
+            var ret = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("MenuItem.make", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["options"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj = new electron.MenuItem(...args);
+            newObj.serveRPC = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                var handlers = {};
+                handlers[c.method](r, c);
+            });
+            var ret = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Tray.make", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["image"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        args[0] = om.object(args[0].ObjectPath).value;
+        console.log(c.Destination, obj);
+        try {
+            var newObj = new electron.Tray(...args);
+            newObj.serveRPC = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                var handlers = {};
+                handlers["destroy"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = [].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["setImage"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["image"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["setPressedImage"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["image"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["setToolTip"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["toolTip"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["setTitle"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["title"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["setHighlightMode"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["mode"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["setIgnoreDoubleClickEvents"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["ignore"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["getIgnoreDoubleClickEvents"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = [].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["displayBalloon"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["options"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["popUpContextMenu"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["menu", "position"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["setContextMenu"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = ["menu"].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    args[0] = om.object(args[0].ObjectPath).value;
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["getBounds"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = [].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["isDestroyed"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = [].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers[c.method](r, c);
+            });
+            var ret = om.register(newObj).handle();
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Notification.isSupported", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = [].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var ret = electron.Notification.isSupported(...args);
+            r.return(ret);
+        }
+        catch (e) {
+            console.log(e.stack);
+            r.return(e);
+        }
+    }));
+    api.handleFunc("Notification.make", (r, c) => __awaiter(this, void 0, void 0, function* () {
+        var obj = yield c.decode();
+        var args = ["options"].map((param) => {
+            return util.argX((obj || {})[param]);
+        });
+        console.log(c.Destination, obj);
+        try {
+            var newObj = new electron.Notification(...args);
+            newObj.serveRPC = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                var handlers = {};
+                handlers["show"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = [].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers["close"] = (r, c) => __awaiter(this, void 0, void 0, function* () {
+                    var obj = yield c.decode();
+                    var args = [].map((param) => {
+                        return util.argX((obj || {})[param]);
+                    });
+                    console.log(c.Destination, obj);
+                    try {
+                        var objRef = om.object(c.objectPath);
+                        var ret = objRef.value[c.method](...args);
+                        r.return(ret);
+                    }
+                    catch (e) {
+                        console.log(e.stack);
+                        r.return(e);
+                    }
+                });
+                handlers[c.method](r, c);
+            });
+            var ret = om.register(newObj).handle();
             r.return(ret);
         }
         catch (e) {

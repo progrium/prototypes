@@ -52,6 +52,10 @@ func (m *ObjectManager) Register(v interface{}) ManagedObject {
 	return &object{value: v, id: id, manager: m}
 }
 
+func (m *ObjectManager) Handle(v interface{}) ObjectHandle {
+	return m.Register(v).Handle()
+}
+
 func (m *ObjectManager) ServeRPC(r Responder, c *Call) {
 	parts := strings.Split(c.ObjectPath, "/")
 	id := parts[len(parts)-1]

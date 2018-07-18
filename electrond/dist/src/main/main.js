@@ -18,7 +18,9 @@ function sleep(ms) {
 }
 electron_1.app.on("ready", () => __awaiter(this, void 0, void 0, function* () {
     var api = new qrpc.API();
-    rpc.register(api);
+    var om = new qrpc.ObjectManager();
+    om.mount(api, "objects");
+    rpc.register(api, om);
     listener = yield libmux.ListenWebsocket("localhost:4242");
     var server = new qrpc.Server();
     console.log("serving...");
