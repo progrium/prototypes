@@ -5,3 +5,4 @@ node_modules
 libmux/libmux.dylib
 typing
 yarn-error.log
+token.json

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -11,12 +12,21 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	youtube "google.golang.org/api/youtube/v3"
 )
 
 const (
-	ProgriumChannelID = "5031651"
+	ProgriumStreamNowID = "b072fLxm7sM"
+	ProgriumChannelID   = "5031651"
+
+	StreamNowDescription = "Chat here is ignored, please chat on Twitch: https://twitch.tv/progrium"
 
 	CommunityGolang          = "003860d3-270f-4082-a8f7-b1aa926272f4"
 	CommunityOpensource      = "4ca22a66-fbfe-4b82-8433-40b9509bc913"
@@ -142,7 +152,18 @@ func main() {
 				}
 			}
 			fullStatus := fmt.Sprintf("%s %s", status, p.Tag)
-			err := UpdateChannel(ProgriumChannelID, ChannelUpdate{
+
+			// Update YouTube
+			err := UpdateLiveBroadcastSnippet(ProgriumStreamNowID, &youtube.LiveBroadcastSnippet{
+				Title:       fullStatus,
+				Description: StreamNowDescription,
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Update Twitch
+			err = UpdateChannel(ProgriumChannelID, ChannelUpdate{
 				Channel: Channel{
 					Status: fullStatus,
 				},
@@ -215,4 +236,108 @@ func (e *ErrorResponse) Error() string {
 
 	return fmt.Sprintf("%v %v: %d %v",
 		r.Request.Method, r.Request.URL, r.StatusCode, e.Message)
+}
+
+// GOOGLE / YOUTUBE STUFF
+
+func UpdateLiveBroadcastSnippet(broadcastID string, snippet *youtube.LiveBroadcastSnippet) error {
+	service, err := youtube.New(getClient())
+	if err != nil {
+		return err
+	}
+	call := service.LiveBroadcasts.Update("snippet", &youtube.LiveBroadcast{
+		Id:      broadcastID,
+		Snippet: snippet,
+	})
+	_, err = call.Do()
+	return err
+}
+
+// Retrieve a token, saves the token, then returns the generated client.
+func getClient() *http.Client {
+	b, err := ioutil.ReadFile("/Users/progrium/.config/youtube_client_id.json")
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, youtube.YoutubeScope)
+	if err != nil {
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+
+	tokenFile := "token.json"
+	tok, err := tokenFromFile(tokenFile)
+	if err != nil {
+		tok = getTokenFromWeb(config)
+		saveToken(tokenFile, tok)
+	}
+	return config.Client(context.Background(), tok)
+}
+
+func openURL(url string) error {
+	var err error
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", "http://localhost:4001/").Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("Cannot open URL %s on this platform", url)
+	}
+	return err
+}
+
+// Request a token from the web, then returns the retrieved token.
+func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
+	codeCh := make(chan string)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		codeCh <- r.URL.Query().Get("code")
+	})
+	h := &http.Server{Addr: ":8080", Handler: mux}
+	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+	// fmt.Printf("Go to the following link in your browser then type the "+
+	// 	"authorization code: \n%v\n", authURL)
+	go h.ListenAndServe()
+
+	openURL(authURL)
+
+	authCode := <-codeCh
+	go h.Shutdown(context.Background())
+	// var authCode string
+	// if _, err := fmt.Scan(&authCode); err != nil {
+	// 	log.Fatalf("Unable to read authorization code %v", err)
+	// }
+
+	tok, err := config.Exchange(oauth2.NoContext, authCode)
+	if err != nil {
+		log.Fatalf("Unable to retrieve token from web %v", err)
+	}
+	return tok
+}
+
+// Retrieves a token from a local file.
+func tokenFromFile(file string) (*oauth2.Token, error) {
+	f, err := os.Open(file)
+	defer f.Close()
+	if err != nil {
+		return nil, err
+	}
+	tok := &oauth2.Token{}
+	err = json.NewDecoder(f).Decode(tok)
+	return tok, err
+}
+
+// Saves a token to a file path.
+func saveToken(path string, token *oauth2.Token) {
+	fmt.Printf("Saving credential file to: %s\n", path)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	defer f.Close()
+	if err != nil {
+		log.Fatalf("Unable to cache oauth token: %v", err)
+	}
+	json.NewEncoder(f).Encode(token)
 }
