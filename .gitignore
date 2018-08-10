@@ -6,3 +6,5 @@ libmux/libmux.dylib
 typing
 yarn-error.log
 token.json
+state.json
+twitch.json

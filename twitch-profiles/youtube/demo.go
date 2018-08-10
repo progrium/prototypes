@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -12,11 +13,23 @@ import (
 	"runtime"
 
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/youtube/v3"
 )
 
 // Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) *http.Client {
+func getClient() *http.Client {
+	b, err := ioutil.ReadFile("/Users/progrium/.config/youtube_client_id.json")
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, youtube.YoutubeScope)
+	if err != nil {
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+
 	tokenFile := "token.json"
 	tok, err := tokenFromFile(tokenFile)
 	if err != nil {
@@ -96,30 +109,25 @@ func saveToken(path string, token *oauth2.Token) {
 func main() {
 	flag.Parse()
 
-	service, err := youtube.New(client)
+	service, err := youtube.New(getClient())
 	if err != nil {
 		log.Fatalf("Error creating YouTube client: %v", err)
 	}
 
-	// Start making YouTube API calls.
-	// Call the channels.list method. Set the mine parameter to true to
-	// retrieve the playlist ID for uploads to the authenticated user's
-	// channel.
-	call := service.LiveBroadcasts.Update("snippet", &youtube.LiveBroadcast{
-		Id: "b072fLxm7sM",
-		Snippet: &youtube.LiveBroadcastSnippet{
-			Title:       "Hello world",
-			Description: "HEre is a description",
-		},
-	})
+	call := service.LiveBroadcasts.List("snippet")
+	call.BroadcastType("persistent")
+	call.Mine(true)
 
-	_, err = call.Do()
+	resp, err := call.Do()
 	if err != nil {
 		// The channels.list method call returned an error.
 		log.Fatalf("Error making API call: %v", err.Error())
 	}
 
-	// for _, channel := range response.Items {
+	for _, b := range resp.Items {
+		b.Snippet.IsDefaultBroadcast
+		fmt.Println(b)
+	}
 	// 	playlistId := channel.ContentDetails.RelatedPlaylists.Uploads
 	// 	// Print the playlist ID for the list of uploaded videos.
 	// 	fmt.Printf("Videos in list %s\r\n", playlistId)
@@ -155,5 +163,23 @@ func main() {
 	// 		}
 	// 		fmt.Println()
 	// 	}
+	// }
+
+	// Start making YouTube API calls.
+	// Call the channels.list method. Set the mine parameter to true to
+	// retrieve the playlist ID for uploads to the authenticated user's
+	// channel.
+	// call := service.LiveBroadcasts.Update("snippet", &youtube.LiveBroadcast{
+	// 	Id: "b072fLxm7sM",
+	// 	Snippet: &youtube.LiveBroadcastSnippet{
+	// 		Title:       "Hello world",
+	// 		Description: "HEre is a description",
+	// 	},
+	// })
+
+	// _, err = call.Do()
+	// if err != nil {
+	// 	// The channels.list method call returned an error.
+	// 	log.Fatalf("Error making API call: %v", err.Error())
 	// }
 }

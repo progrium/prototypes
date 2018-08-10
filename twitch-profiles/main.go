@@ -23,8 +23,7 @@ import (
 )
 
 const (
-	ProgriumStreamNowID = "b072fLxm7sM"
-	ProgriumChannelID   = "5031651"
+	ProgriumChannelID = "5031651"
 
 	StreamNowDescription = "Chat here is ignored, please chat on Twitch: https://twitch.tv/progrium"
 
@@ -154,7 +153,11 @@ func main() {
 			fullStatus := fmt.Sprintf("%s %s", status, p.Tag)
 
 			// Update YouTube
-			err := UpdateLiveBroadcastSnippet(ProgriumStreamNowID, &youtube.LiveBroadcastSnippet{
+			broadcast, err := GetDefaultBroadcast()
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = UpdateLiveBroadcastSnippet(broadcast.Id, &youtube.LiveBroadcastSnippet{
 				Title:       fullStatus,
 				Description: StreamNowDescription,
 			})
@@ -239,6 +242,26 @@ func (e *ErrorResponse) Error() string {
 }
 
 // GOOGLE / YOUTUBE STUFF
+
+func GetDefaultBroadcast() (*youtube.LiveBroadcast, error) {
+	service, err := youtube.New(getClient())
+	if err != nil {
+		return nil, err
+	}
+	call := service.LiveBroadcasts.List("snippet")
+	call.BroadcastType("persistent")
+	call.Mine(true)
+	resp, err := call.Do()
+	if err != nil {
+		return nil, err
+	}
+	for _, b := range resp.Items {
+		if b.Snippet.IsDefaultBroadcast {
+			return b, nil
+		}
+	}
+	return nil, nil
+}
 
 func UpdateLiveBroadcastSnippet(broadcastID string, snippet *youtube.LiveBroadcastSnippet) error {
 	service, err := youtube.New(getClient())
