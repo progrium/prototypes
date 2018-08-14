@@ -143,7 +143,7 @@ func main() {
 	for _, p := range profiles {
 		if p.Name == profile {
 			if status == "" {
-				event, _ := NextEvent(ProgriumChannelID, p.Tag)
+				event, _ := NextEvent(ProgriumChannelID, "#"+p.Name)
 				if event.Title != "" {
 					status = event.Title
 				} else {
