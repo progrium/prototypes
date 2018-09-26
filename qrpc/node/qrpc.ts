@@ -1,5 +1,4 @@
 import * as msgpack from "msgpack-lite";
-import { SSL_OP_CRYPTOPRO_TLSEXT_BUG } from "constants";
 
 interface Session {
 	open(): Promise<Channel>;
@@ -63,8 +62,8 @@ class FrameCodec {
                     //console.log("DEBUG: readloop exited");
                     return;
                 }
-                var sdata = new DataView(sbuf.buffer);
-			    var size = sdata.getUint32(0);
+                var sdata = new DataView(new Uint8Array(sbuf).buffer);
+                var size = sdata.getUint32(0);
                 var buf = await this.channel.read(size);
                 if (buf === undefined) {
                     //console.log("DEBUG: readloop exited");

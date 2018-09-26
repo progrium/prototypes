@@ -77,7 +77,7 @@ var FrameCodec = /** @class */ (function () {
                             //console.log("DEBUG: readloop exited");
                             return [2 /*return*/];
                         }
-                        sdata = new DataView(sbuf.buffer);
+                        sdata = new DataView(new Uint8Array(sbuf).buffer);
                         size = sdata.getUint32(0);
                         return [4 /*yield*/, this.channel.read(size)];
                     case 4:
@@ -370,6 +370,7 @@ var Server = /** @class */ (function () {
                     case 2:
                         sess = _a.sent();
                         if (sess === undefined) {
+                            console.log("accept eof");
                             return [2 /*return*/];
                         }
                         this.serveAPI(sess);

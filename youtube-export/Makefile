@@ -1,3 +1,0 @@
-
-run:
-	node export.js 

@@ -7,7 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/progrium/prototypes/libmux/mux"
-	"github.com/progrium/prototypes/qbus/supervisor"
+	"github.com/progrium/prototypes/pkg/supervisor"
 	"github.com/progrium/prototypes/qrpc"
 	"github.com/progrium/prototypes/qrpc/bus"
 )

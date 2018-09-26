@@ -2,12 +2,6 @@
 # yarn lockfile v1
 
 
-"@nodeguy/channel@^0.6.3":
-  version "0.6.3"
-  resolved "https://registry.yarnpkg.com/@nodeguy/channel/-/channel-0.6.3.tgz#136d093131098ca475c3e6531f65af26c7dbbdc8"
-  dependencies:
-    setimmediate "1.0.5"
-
 "@types/node@^10.5.2":
   version "10.5.2"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-10.5.2.tgz#f19f05314d5421fe37e74153254201a7bf00a707"
@@ -36,10 +30,6 @@ msgpack-lite@^0.1.26:
     ieee754 "^1.1.8"
     int64-buffer "^0.1.9"
     isarray "^1.0.0"
-
-setimmediate@1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/setimmediate/-/setimmediate-1.0.5.tgz#290cbb232e306942d7d7ea9b83732ab7856f8285"
 
 typescript@^2.9.2:
   version "2.9.2"

@@ -2,5 +2,4 @@
 if [[ "$1" == *.go ]]; then
     relativepath=${1##*/}
     go build -o modules/${relativepath%.go} $1
-    #osascript -e "display notification \"\" with title \"rpcdaemon\""
 fi

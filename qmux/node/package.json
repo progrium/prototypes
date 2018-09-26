@@ -1,0 +1,19 @@
+{
+  "name": "qmux",
+  "version": "1.0.0",
+  "description": "",
+  "main": "qmux.js",
+  "dependencies": {
+    "@types/ws": "^6.0.1",
+    "ws": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^10.9.4",
+    "typescript": "^3.0.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

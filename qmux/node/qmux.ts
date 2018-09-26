@@ -1,5 +1,3 @@
-import * as chan from "@nodeguy/channel";
-
 const msgChannelOpen = 100;
 const msgChannelOpenConfirm = 101;
 const msgChannelOpenFailure = 102;
@@ -48,11 +46,50 @@ interface channelCloseMsg {
 	peersID: number;
 }
 
+class queue {
+	q: Array<any>
+	waiters: Array<Function>
+	closed: boolean
+
+	constructor() {
+		this.q = [];
+		this.waiters = [];
+		this.closed = false;
+	}
+
+	push(obj: any) {
+		if (this.closed) throw "closed queue";
+		if (this.waiters.length > 0) {
+			this.waiters.shift()(obj);
+			return;
+		}
+		this.q.push(obj);
+	}
+
+	shift(): Promise<any> {
+		if (this.closed) return;
+        return new Promise(resolve => {
+            if (this.q.length > 0) {
+                resolve(this.q.shift());
+                return;
+            }
+            this.waiters.push(resolve);
+        })
+	}
+	
+	close() {
+		if (this.closed) return;
+		this.closed = true;
+		this.waiters.forEach(waiter => {
+			waiter(undefined);
+		});
+	}
+}
+
 interface IConn {
-	recv(): Promise<Uint8Array>;
-	send(buffer: ArrayBuffer): Promise<number>;
+	read(len: number): Promise<Buffer>;
+	write(buffer: Buffer): Promise<number>;
 	close(): Promise<void>;
-	closeWrite(): Promise<void>;
 }
 
 interface ISession {
@@ -69,52 +106,63 @@ interface IChannel extends IConn {
 export class Session implements ISession {
 	conn: IConn;
 	channels: Array<Channel>;
-	incoming: chan;
+	incoming: queue;
 
 	constructor(conn: IConn) {
 		this.conn = conn;
 		this.channels = [];
-		this.incoming = chan();
+		this.incoming = new queue();
 		this.loop();
 	}
 
-	async readPacket(): Promise<ArrayBuffer> {
-		var sizes = {
-			msgChannelOpen:         12,
-			msgChannelOpenConfirm:  16,
-			msgChannelOpenFailure:  4,
-			msgChannelWindowAdjust: 8,
-			msgChannelData:         8,
-			msgChannelEOF:          4,
-			msgChannelClose:        4,
+	async readPacket(): Promise<Buffer> {
+		var sizes = new Map([
+			[msgChannelOpen,         12],
+			[msgChannelOpenConfirm,  16],
+			[msgChannelOpenFailure,  4],
+			[msgChannelWindowAdjust, 8],
+			[msgChannelData,         8],
+			[msgChannelEOF,          4],
+			[msgChannelClose,        4],
+		]);
+		var msg = await this.conn.read(1);
+		if (msg === undefined) {
+			return;
 		}
-		var packet = await this.conn.recv();
-		// if (packet[0] == msgChannelData) {
-		// 	dataSize := binary.BigEndian.Uint32(rest[4:8])
-		// 	data := make([]byte, dataSize)
-		// 	_, err := c.Read(data)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// 	packet = append(packet, data...)
-		// }
-		return Promise.resolve(packet.buffer);
+		if (msg[0] < msgChannelOpen || msg[0] > msgChannelClose) {
+			return Promise.reject("bad packet: "+msg[0]);
+		}
+		var rest = await this.conn.read(sizes.get(msg[0]));
+		if (rest === undefined) {
+			return Promise.reject("unexpected EOF");
+		}
+		if (msg[0] === msgChannelData) {
+			var view = new DataView(new Uint8Array(rest).buffer);
+			var length = view.getUint32(4);
+			var data = await this.conn.read(length);
+			if (data === undefined) {
+				return Promise.reject("unexpected EOF");
+			}
+			return Buffer.concat([msg, rest, data], length+rest.length+1);
+		}
+		return Buffer.concat([msg, rest], rest.length+1);
 	}
 
-	async handleChannelOpen(packet: ArrayBuffer) {
+	async handleChannelOpen(packet: Buffer) {
 		var msg: channelOpenMsg = decode(packet);
-		if (msg.maxPacketSize < minPacketLength || msg.maxPacketSize > 1<<31) {
-			await this.conn.send(encode(msgChannelOpenFailure, {
+		if (msg.maxPacketSize < minPacketLength || msg.maxPacketSize > 1<<30) {
+			await this.conn.write(encode(msgChannelOpenFailure, {
 				peersID: msg.peersID
 			}));
+			return;
 		}
 		var c = this.newChannel();
 		c.remoteId = msg.peersID;
 		c.maxRemotePayload = msg.maxPacketSize;
 		c.remoteWin = msg.peersWindow;
 		c.maxIncomingPayload = channelMaxPacket;
-		await this.incoming.push(c);
-		await this.conn.send(encode(msgChannelOpenConfirm, {
+		this.incoming.push(c);
+		await this.conn.write(encode(msgChannelOpenConfirm, {
 			peersID: c.remoteId,
 			myID: c.localId,
 			myWindow: c.myWindow,
@@ -125,13 +173,13 @@ export class Session implements ISession {
 	async open(): Promise<IChannel> {
 		var ch = this.newChannel();
 		ch.maxIncomingPayload = channelMaxPacket;
-		await this.conn.send(encode(msgChannelOpen, {
+		await this.conn.write(encode(msgChannelOpen, {
 			peersWindow: ch.myWindow,
 			maxPacketSize: ch.maxIncomingPayload,
 			peersID: ch.localId
 		}));
 		if (await ch.ready.shift()) {
-			return Promise.resolve(ch);
+			return ch;
 		}
 		throw "failed to open";
 	}
@@ -140,8 +188,9 @@ export class Session implements ISession {
 		var ch = new Channel();
 		ch.remoteWin = 0;
 		ch.myWindow = channelWindowSize;
-		ch.ready = chan();
-		ch.readBuf = chan();
+		ch.ready = new queue();
+		ch.readBuf = new Buffer(0);
+		ch.readers = [];
 		ch.session = this;
 		ch.localId = this.addCh(ch);
 		return ch;
@@ -149,21 +198,27 @@ export class Session implements ISession {
 
 	async loop() {
 		try {
-			setInterval(async () => {
+			while (true) {
 				var packet = await this.readPacket();
-				if (packet[0] == msgChannelOpen) {
-					await this.handleChannelOpen(packet);
+				if (packet === undefined) {
+					this.close();
 					return;
 				}
-				var data = new DataView(packet);
+				if (packet[0] == msgChannelOpen) {
+					await this.handleChannelOpen(packet);
+					continue;
+				}
+				var data = new DataView(new Uint8Array(packet).buffer);
 				var id = data.getUint32(1);
 				var ch = this.getCh(id);
 				if (ch === undefined) {
 					throw "invalid channel ("+id+") on op "+packet[0];
 				}
 				await ch.handlePacket(data);
-			}, 20);
-		} finally {}
+			}
+		} catch (e) {
+			throw new Error("session readloop: "+e);
+		}
 		// catch {
 		// 	this.channels.forEach(async (ch) => {
 		// 		await ch.close();
@@ -196,7 +251,12 @@ export class Session implements ISession {
 		return this.incoming.shift();
 	}
 
-	close(): Promise<void> {
+	async close(): Promise<void> {
+		for (const id of Object.keys(this.channels)) {
+			if (this.channels[id] !== undefined) {
+				this.channels[id].shutdown();
+			}
+		}
 		return this.conn.close();
 	}
 }
@@ -207,12 +267,13 @@ export class Channel {
 	maxIncomingPayload: number;
 	maxRemotePayload: number;
 	session: Session;
-	ready: chan;
+	ready: queue;
 	sentEOF: boolean;
 	sentClose: boolean;
 	remoteWin: number;
 	myWindow: number;
-	readBuf: chan;
+	readBuf: Buffer;
+	readers: Array<Function>;
 
 	ident(): number {
 		return this.localId;
@@ -223,51 +284,47 @@ export class Channel {
 			throw "EOF";
 		}
 		this.sentClose = (packet[0] === msgChannelClose);
-		return this.session.conn.send(packet.buffer);
+		return this.session.conn.write(Buffer.from(packet));
 	}
 
 	sendMessage(type: number, msg: any): Promise<number> {
-		var data = new DataView(encode(type, msg));
+		var data = new DataView(encode(type, msg).buffer);
 		data.setUint32(1, this.remoteId);
 		return this.sendPacket(new Uint8Array(data.buffer));
 	}
 
-	async handlePacket(packet: DataView) {
-		if (packet.buffer[0] === msgChannelData) {
+	handlePacket(packet: DataView) {
+		if (packet.getUint8(0) === msgChannelData) {
 			this.handleData(packet);
 			return; 
 		}
-		if (packet.buffer[0] === msgChannelClose) {
-			await this.sendMessage(msgChannelClose, {
-				peersID: this.remoteId
-			});
-			this.session.rmCh(this.localId);
-			await this.handleClose();
+		if (packet.getUint8(0) === msgChannelClose) {
+			this.handleClose();
 			return;
 		}
-		if (packet.buffer[0] === msgChannelEOF) {
+		if (packet.getUint8(0) === msgChannelEOF) {
 			// TODO
 			return;
 		}
-		if (packet.buffer[0] === msgChannelOpenFailure) {
-			var fmsg:channelOpenFailureMsg = decode(packet.buffer);
+		if (packet.getUint8(0) === msgChannelOpenFailure) {
+			var fmsg:channelOpenFailureMsg = decode(Buffer.from(packet.buffer));
 			this.session.rmCh(fmsg.peersID);
-			await this.ready.push(false);
+			this.ready.push(false);
 			return;
 		}
-		if (packet.buffer[0] === msgChannelOpenConfirm) {
-			var cmsg:channelOpenConfirmMsg = decode(packet.buffer);
-			if (cmsg.maxPacketSize < minPacketLength || cmsg.maxPacketSize > 1<<31) {
+		if (packet.getUint8(0) === msgChannelOpenConfirm) {
+			var cmsg:channelOpenConfirmMsg = decode(Buffer.from(packet.buffer));
+			if (cmsg.maxPacketSize < minPacketLength || cmsg.maxPacketSize > 1<<30) {
 				throw "invalid max packet size";
 			}
 			this.remoteId = cmsg.myID;
 			this.maxRemotePayload = cmsg.maxPacketSize;
 			this.remoteWin += cmsg.myWindow;
-			await this.ready.push(true);
+			this.ready.push(true);
 			return;
 		}
-		if (packet.buffer[0] === msgChannelWindowAdjust) {
-			var amsg:channelWindowAdjustMsg = decode(packet.buffer);
+		if (packet.getUint8(0) === msgChannelWindowAdjust) {
+			var amsg:channelWindowAdjustMsg = decode(Buffer.from(packet.buffer));
 			this.remoteWin += amsg.additionalBytes;
 		}
 	}
@@ -280,28 +337,46 @@ export class Channel {
 		if (length > this.maxIncomingPayload) {
 			throw "incoming packet exceeds maximum payload size";
 		}
-		var data = packet.buffer.slice(9, length);
+		var data = Buffer.from(packet.buffer).slice(9);
 		// TODO: check packet length
 		if (this.myWindow < length) {
 			throw "remot side wrote too much";
 		}
 		this.myWindow -= length;
-		await this.readBuf.push(data);
+		this.readBuf = Buffer.concat([this.readBuf, data], this.readBuf.length+data.length);
+		if (this.readers.length > 0) {
+			this.readers.shift()();
+		}
 	}
 
 	async adjustWindow(n: number) {
 		// TODO
 	}
 
-	async recv(): Promise<Uint8Array> {
-		return Promise.resolve(new Uint8Array(await this.readBuf.shift()));
+	read(len): Promise<Buffer> {
+		return new Promise(resolve => {
+			var tryRead = () => {
+                if (this.readBuf === undefined) {
+                    resolve(undefined);
+                    return;
+                }
+                if (this.readBuf.length >= len) {
+                    var data = this.readBuf.slice(0, len);
+                    this.readBuf = this.readBuf.slice(len);
+                    resolve(data);
+                    return;
+                }
+                this.readers.push(tryRead);
+            }
+			tryRead();
+		});
 	}
 
-	send(buffer: ArrayBuffer): Promise<number> {
+	write(buffer: Buffer): Promise<number> {
 		if (this.sentEOF) {
 			return Promise.reject("EOF");
 		}
-		// TODO: use window
+		// TODO: use window 
 		var header = new DataView(new ArrayBuffer(9));
 		header.setUint8(0, msgChannelData);
 		header.setUint32(1, this.remoteId);
@@ -312,15 +387,27 @@ export class Channel {
 		return this.sendPacket(packet);
 	}
 
-	async handleClose(): Promise<void> {
-		await this.ready.close();
-		this.sentClose = true;
+	handleClose(): Promise<void> {
+		return this.close();	
 	}
 
-	async close() {
-		await this.sendMessage(msgChannelClose, {
-			peersID: this.remoteId
-		});
+	async close(): Promise<void> {
+		if (!this.sentClose) {
+			await this.sendMessage(msgChannelClose, {
+				peersID: this.remoteId
+			});
+			this.sentClose = true;
+			while (await this.ready.shift() !== undefined) {}
+			return;
+		}
+		this.shutdown();
+	}
+
+	shutdown() {
+		this.readBuf = undefined;
+		this.readers.forEach(reader => reader());
+		this.ready.close();
+		this.session.rmCh(this.localId);
 	}
 
 	async closeWrite() {
@@ -331,13 +418,13 @@ export class Channel {
 	}
 }
 
-function encode(type: number, obj: any): ArrayBuffer {
+function encode(type: number, obj: any): Buffer {
 	switch (type) {
 		case msgChannelClose:
 			var data = new DataView(new ArrayBuffer(5));
 			data.setUint8(0, type);
 			data.setUint32(1, (<channelCloseMsg>obj).peersID);
-			return data.buffer;
+			return Buffer.from(data.buffer);
 		case msgChannelData:
 			var datamsg = <channelDataMsg>obj;
 			var data = new DataView(new ArrayBuffer(9));
@@ -347,12 +434,12 @@ function encode(type: number, obj: any): ArrayBuffer {
 			var buf = new Uint8Array(9+datamsg.length);
 			buf.set(new Uint8Array(data.buffer), 0);
 			buf.set(datamsg.rest, 9);
-			return buf.buffer;
+			return Buffer.from(buf.buffer);
 		case msgChannelEOF:
 			var data = new DataView(new ArrayBuffer(5));
 			data.setUint8(0, type);
 			data.setUint32(1, (<channelEOFMsg>obj).peersID);
-			return data.buffer;
+			return Buffer.from(data.buffer);
 		case msgChannelOpen:
 			var data = new DataView(new ArrayBuffer(13));
 			var openmsg = <channelOpenMsg>obj;
@@ -360,7 +447,7 @@ function encode(type: number, obj: any): ArrayBuffer {
 			data.setUint32(1, openmsg.peersID);
 			data.setUint32(5, openmsg.peersWindow);
 			data.setUint32(9, openmsg.maxPacketSize);
-			return data.buffer;
+			return Buffer.from(data.buffer);
 		case msgChannelOpenConfirm:
 			var data = new DataView(new ArrayBuffer(17));
 			var confirmmsg = <channelOpenConfirmMsg>obj;
@@ -369,34 +456,35 @@ function encode(type: number, obj: any): ArrayBuffer {
 			data.setUint32(5, confirmmsg.myID);
 			data.setUint32(9, confirmmsg.myWindow);
 			data.setUint32(13, confirmmsg.maxPacketSize);
-			return data.buffer;
+			return Buffer.from(data.buffer);
 		case msgChannelOpenFailure:
 			var data = new DataView(new ArrayBuffer(5));
 			data.setUint8(0, type);
 			data.setUint32(1, (<channelOpenFailureMsg>obj).peersID);
-			return data.buffer;
+			return Buffer.from(data.buffer);
 		case msgChannelWindowAdjust:
 			var data = new DataView(new ArrayBuffer(9));
 			var adjustmsg = <channelWindowAdjustMsg>obj;
 			data.setUint8(0, type);
 			data.setUint32(1, adjustmsg.peersID);
 			data.setUint32(5, adjustmsg.additionalBytes);
-			return data.buffer;
+			return Buffer.from(data.buffer);
 		default:
 			throw "unknown type";
 	}
 }
 
-function decode(packet: ArrayBuffer): any {
+function decode(packet: Buffer): any {
+	var packetBuf = new Uint8Array(packet).buffer;
 	switch (packet[0]) {
 		case msgChannelClose:
-			var data = new DataView(new ArrayBuffer(5));
+			var data = new DataView(packetBuf);
 			var closeMsg:channelCloseMsg = {
 				peersID: data.getUint32(1)
 			};
 			return closeMsg;
 		case msgChannelData:
-			var data = new DataView(new ArrayBuffer(9));
+			var data = new DataView(packetBuf);
 			var dataLength = data.getUint32(5);
 			var dataMsg:channelDataMsg = {
 				peersID: data.getUint32(1),
@@ -406,13 +494,13 @@ function decode(packet: ArrayBuffer): any {
 			dataMsg.rest.set(new Uint8Array(data.buffer.slice(9)));
 			return dataMsg;
 		case msgChannelEOF:
-			var data = new DataView(new ArrayBuffer(5));
+			var data = new DataView(packetBuf);
 			var eofMsg:channelEOFMsg = {
 				peersID: data.getUint32(1),
 			};
 			return eofMsg;
 		case msgChannelOpen:
-			var data = new DataView(new ArrayBuffer(13));
+			var data = new DataView(packetBuf);
 			var openMsg:channelOpenMsg = {
 				peersID: data.getUint32(1),
 				peersWindow: data.getUint32(5),
@@ -420,7 +508,7 @@ function decode(packet: ArrayBuffer): any {
 			};
 			return openMsg;
 		case msgChannelOpenConfirm:
-			var data = new DataView(new ArrayBuffer(17));
+			var data = new DataView(packetBuf);
 			var confirmMsg:channelOpenConfirmMsg = {
 				peersID: data.getUint32(1),
 				myID: data.getUint32(5),
@@ -429,13 +517,13 @@ function decode(packet: ArrayBuffer): any {
 			};
 			return confirmMsg;
 		case msgChannelOpenFailure:
-			var data = new DataView(new ArrayBuffer(5));
+			var data = new DataView(packetBuf);
 			var failureMsg:channelOpenFailureMsg = {
 				peersID: data.getUint32(1),
 			};
 			return failureMsg;
 		case msgChannelWindowAdjust:
-			var data = new DataView(new ArrayBuffer(9));
+			var data = new DataView(packetBuf);
 			var adjustMsg:channelWindowAdjustMsg = {
 				peersID: data.getUint32(1),
 				additionalBytes: data.getUint32(5),
@@ -445,3 +533,4 @@ function decode(packet: ArrayBuffer): any {
 			throw "unknown type";
 	}
 }
+
