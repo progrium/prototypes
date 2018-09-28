@@ -534,3 +534,33 @@ function decode(packet: Buffer): any {
 	}
 }
 
+// export {Session, Channel};
+
+// declare var define: any;
+// declare var window: any;
+
+// (function () {
+
+//     let exportables = [Session, Channel];
+
+//     // Node: Export function
+//     if (typeof module !== "undefined" && module.exports) {
+//         exportables.forEach(exp => module.exports[nameof(exp)] = exp);
+//     }
+//     // AMD/requirejs: Define the module
+//     else if (typeof define === 'function' && define.amd) {
+//         exportables.forEach(exp => define(() => exp));
+//     }
+//     //expose it through Window
+//     else if (window) {
+//         exportables.forEach(exp => (window as any)[nameof(exp)] = exp);
+//     }
+
+//     function nameof(fn: any): string {
+//         return typeof fn === 'undefined' ? '' : fn.name ? fn.name : (() => {
+//             let result = /^function\s+([\w\$]+)\s*\(/.exec(fn.toString());
+//             return !result ? '' : result[1];
+//         })();
+//     }
+
+// } ());

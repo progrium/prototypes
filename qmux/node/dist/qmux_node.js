@@ -34,9 +34,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 var qmux = require("./qmux");
+var WebSocket = require("ws");
 var net = require("net");
+exports.Session = qmux.Session;
+exports.Channel = qmux.Channel;
 var queue = /** @class */ (function () {
     function queue() {
         this.q = [];
@@ -77,7 +80,7 @@ var queue = /** @class */ (function () {
 function DialTCP(port, host) {
     return new Promise(function (resolve) {
         var socket = net.createConnection(port, host, function () {
-            resolve(new Conn(socket));
+            resolve(new TCPConn(socket));
         });
     });
 }
@@ -88,7 +91,7 @@ function ListenTCP(port, host) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    listener = new Listener();
+                    listener = new TCPListener();
                     return [4 /*yield*/, listener.listen(port, host)];
                 case 1:
                     _a.sent();
@@ -98,15 +101,15 @@ function ListenTCP(port, host) {
     });
 }
 exports.ListenTCP = ListenTCP;
-var Listener = /** @class */ (function () {
-    function Listener() {
+var TCPListener = /** @class */ (function () {
+    function TCPListener() {
         this.pending = new queue();
     }
-    Listener.prototype.listen = function (port, host) {
+    TCPListener.prototype.listen = function (port, host) {
         var _this = this;
         return new Promise(function (resolve) {
             _this.server = net.createServer(function (c) {
-                _this.pending.push(new qmux.Session(new Conn(c)));
+                _this.pending.push(new qmux.Session(new TCPConn(c)));
             });
             _this.server.on('error', function (err) {
                 throw err;
@@ -117,25 +120,25 @@ var Listener = /** @class */ (function () {
             _this.server.listen(port, host, resolve);
         });
     };
-    Listener.prototype.accept = function () {
+    TCPListener.prototype.accept = function () {
         return this.pending.shift();
     };
-    Listener.prototype.close = function () {
+    TCPListener.prototype.close = function () {
         var _this = this;
         return new Promise(function (resolve) {
             _this.server.close(resolve);
         });
     };
-    return Listener;
+    return TCPListener;
 }());
-exports.Listener = Listener;
-var Conn = /** @class */ (function () {
-    function Conn(socket) {
+exports.TCPListener = TCPListener;
+var TCPConn = /** @class */ (function () {
+    function TCPConn(socket) {
         var _this = this;
         this.socket = socket;
         this.socket.on('error', function (err) { return _this.error = err; });
     }
-    Conn.prototype.read = function (len) {
+    TCPConn.prototype.read = function (len) {
         var _this = this;
         var stream = this.socket;
         return new Promise(function (resolve, reject) {
@@ -180,19 +183,145 @@ var Conn = /** @class */ (function () {
             readableHandler();
         });
     };
-    Conn.prototype.write = function (buffer) {
+    TCPConn.prototype.write = function (buffer) {
         var _this = this;
         return new Promise(function (resolve) {
             _this.socket.write(buffer, function () { return resolve(buffer.byteLength); });
         });
     };
-    Conn.prototype.close = function () {
+    TCPConn.prototype.close = function () {
         var _this = this;
         return new Promise(function (resolve) {
             _this.socket.destroy();
             resolve();
         });
     };
-    return Conn;
+    return TCPConn;
 }());
-exports.Conn = Conn;
+exports.TCPConn = TCPConn;
+function DialWebsocket(addr) {
+    return new Promise(function (resolve, reject) {
+        var socket = new WebSocket(addr, { perMessageDeflate: false });
+        socket.on("open", function () {
+            resolve(new WebsocketConn(socket));
+        });
+        socket.on("error", function (err) {
+            reject(err);
+        });
+    });
+}
+exports.DialWebsocket = DialWebsocket;
+function ListenWebsocket(port, host) {
+    return __awaiter(this, void 0, void 0, function () {
+        var listener;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    listener = new WebsocketListener();
+                    return [4 /*yield*/, listener.listen(port, host)];
+                case 1:
+                    _a.sent();
+                    return [2 /*return*/, listener];
+            }
+        });
+    });
+}
+exports.ListenWebsocket = ListenWebsocket;
+var WebsocketListener = /** @class */ (function () {
+    function WebsocketListener() {
+        this.pending = new queue();
+    }
+    WebsocketListener.prototype.listen = function (port, host) {
+        var _this = this;
+        return new Promise(function (resolve) {
+            _this.server = new WebSocket.Server({
+                host: host,
+                port: port,
+                perMessageDeflate: false,
+            }, resolve);
+            _this.server.on("connection", function (c) {
+                _this.pending.push(new qmux.Session(new WebsocketConn(c)));
+            });
+            _this.server.on("error", function (err) {
+                throw err;
+            });
+            _this.server.on("close", function () {
+                _this.pending.close();
+            });
+        });
+    };
+    WebsocketListener.prototype.accept = function () {
+        return this.pending.shift();
+    };
+    WebsocketListener.prototype.close = function () {
+        var _this = this;
+        return new Promise(function (resolve) {
+            _this.server.close(function () { return resolve(); });
+        });
+    };
+    return WebsocketListener;
+}());
+exports.WebsocketListener = WebsocketListener;
+var WebsocketConn = /** @class */ (function () {
+    function WebsocketConn(socket) {
+        var _this = this;
+        this.isClosed = false;
+        this.buf = new Buffer(0);
+        this.waiters = [];
+        this.socket = socket;
+        this.socket.on("message", function (data) {
+            var buf = data;
+            _this.buf = Buffer.concat([_this.buf, buf], _this.buf.length + buf.length);
+            if (_this.waiters.length > 0) {
+                _this.waiters.shift()();
+            }
+        });
+        this.socket.on("close", function () {
+            _this.close();
+        });
+        this.socket.on("error", function (err) {
+            console.log("err", err);
+        });
+    }
+    WebsocketConn.prototype.read = function (len) {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            var tryRead = function () {
+                if (_this.buf === undefined) {
+                    resolve(undefined);
+                    return;
+                }
+                if (_this.buf.length >= len) {
+                    var data = _this.buf.slice(0, len);
+                    _this.buf = _this.buf.slice(len);
+                    resolve(data);
+                    return;
+                }
+                _this.waiters.push(tryRead);
+            };
+            tryRead();
+        });
+    };
+    WebsocketConn.prototype.write = function (buffer) {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            _this.socket.send(buffer, { binary: true }, function () {
+                resolve(buffer.length);
+            });
+        });
+    };
+    WebsocketConn.prototype.close = function () {
+        var _this = this;
+        if (this.isClosed)
+            return Promise.resolve();
+        return new Promise(function (resolve, reject) {
+            _this.isClosed = true;
+            _this.buf = undefined;
+            _this.waiters.forEach(function (waiter) { return waiter(); });
+            _this.socket.close();
+            resolve();
+        });
+    };
+    return WebsocketConn;
+}());
+exports.WebsocketConn = WebsocketConn;

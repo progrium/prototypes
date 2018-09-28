@@ -189,11 +189,27 @@ func (v *Vue) Mount() {
 	js.Global().Set(v.ID, methods)
 }
 
+type Component struct {
+	Element string
+	Template string
+}
+
+type ButtonCounter struct {
+	Counter int
+}
+
+func (c *ButtonCounter) Template() string {
+	return `<button v-on:click="Greet">Greet</button><p>Here is a number: {{ .Counter }}.</p>`
+}
+
+func (c *ButtonCounter) Greet() {
+	SetState(c, "Counter", c.Counter+1)
+}
+
 func main() {
 	v := &Vue{
 		ID: "v1",
 
-		Element:  "body",
 		Template: `<button v-on:click="greet">Greet</button><p>Here is a number: {{ .Counter }}.</p>`,
 		Data: Data{
 			"Counter": 4,

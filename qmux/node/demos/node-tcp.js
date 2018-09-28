@@ -1,10 +1,9 @@
-var qmux = require('./qmux.js');
-var tcp = require('./tcp.js');
+var qmux = require('qmux');
 var net = require('net');
 
 (async () => {
 
-    var listener = await tcp.ListenTCP(7000);
+    var listener = await qmux.ListenTCP(7000);
 
     (async () => {
         var sess = await listener.accept();
@@ -22,7 +21,7 @@ var net = require('net');
     })();
 
     
-    var sess = new qmux.Session(await tcp.DialTCP(7000));
+    var sess = new qmux.Session(await qmux.DialTCP(7000));
     var ch = await sess.accept();
     await ch.write(Buffer.from("Hello"));
     await ch.write(Buffer.from(" "));

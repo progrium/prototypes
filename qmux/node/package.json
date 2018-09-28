@@ -2,14 +2,16 @@
   "name": "qmux",
   "version": "1.0.0",
   "description": "",
-  "main": "qmux.js",
+  "main": "dist/qmux_node.js",
   "dependencies": {
-    "@types/ws": "^6.0.1",
     "ws": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^10.9.4",
-    "typescript": "^3.0.3"
+    "@types/ws": "^6.0.1",
+    "browserify": "^16.2.3",
+    "typescript": "^3.0.3",
+    "uglify-js": "^3.4.9"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

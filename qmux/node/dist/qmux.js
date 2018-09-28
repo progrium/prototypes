@@ -34,7 +34,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 var msgChannelOpen = 100;
 var msgChannelOpenConfirm = 101;
 var msgChannelOpenFailure = 102;
@@ -524,14 +524,14 @@ function decode(packet) {
             var dataMsg = {
                 peersID: data.getUint32(1),
                 length: dataLength,
-                rest: new Uint8Array(dataLength)
+                rest: new Uint8Array(dataLength),
             };
             dataMsg.rest.set(new Uint8Array(data.buffer.slice(9)));
             return dataMsg;
         case msgChannelEOF:
             var data = new DataView(packetBuf);
             var eofMsg = {
-                peersID: data.getUint32(1)
+                peersID: data.getUint32(1),
             };
             return eofMsg;
         case msgChannelOpen:
@@ -539,7 +539,7 @@ function decode(packet) {
             var openMsg = {
                 peersID: data.getUint32(1),
                 peersWindow: data.getUint32(5),
-                maxPacketSize: data.getUint32(9)
+                maxPacketSize: data.getUint32(9),
             };
             return openMsg;
         case msgChannelOpenConfirm:
@@ -548,23 +548,47 @@ function decode(packet) {
                 peersID: data.getUint32(1),
                 myID: data.getUint32(5),
                 myWindow: data.getUint32(9),
-                maxPacketSize: data.getUint32(13)
+                maxPacketSize: data.getUint32(13),
             };
             return confirmMsg;
         case msgChannelOpenFailure:
             var data = new DataView(packetBuf);
             var failureMsg = {
-                peersID: data.getUint32(1)
+                peersID: data.getUint32(1),
             };
             return failureMsg;
         case msgChannelWindowAdjust:
             var data = new DataView(packetBuf);
             var adjustMsg = {
                 peersID: data.getUint32(1),
-                additionalBytes: data.getUint32(5)
+                additionalBytes: data.getUint32(5),
             };
             return adjustMsg;
         default:
             throw "unknown type";
     }
 }
+// export {Session, Channel};
+// declare var define: any;
+// declare var window: any;
+// (function () {
+//     let exportables = [Session, Channel];
+//     // Node: Export function
+//     if (typeof module !== "undefined" && module.exports) {
+//         exportables.forEach(exp => module.exports[nameof(exp)] = exp);
+//     }
+//     // AMD/requirejs: Define the module
+//     else if (typeof define === 'function' && define.amd) {
+//         exportables.forEach(exp => define(() => exp));
+//     }
+//     //expose it through Window
+//     else if (window) {
+//         exportables.forEach(exp => (window as any)[nameof(exp)] = exp);
+//     }
+//     function nameof(fn: any): string {
+//         return typeof fn === 'undefined' ? '' : fn.name ? fn.name : (() => {
+//             let result = /^function\s+([\w\$]+)\s*\(/.exec(fn.toString());
+//             return !result ? '' : result[1];
+//         })();
+//     }
+// } ());
