@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log"
 	"reflect"
@@ -77,30 +78,18 @@ func (p *PageView) OnTextAreaChange(e *vecty.Event) {
 
 // Render implements the vecty.Component interface.
 func (p *PageView) Render() vecty.ComponentOrHTML {
-	// return render(`
-	// <body>
-	// 	<div style="float: right">
-	// 		<textarea
-	// 			v-on:input="OnTextAreaChange"
-	// 			rows="14"
-	// 			cols="70"
-	// 			style="font-family: monospace;">{{.Input}}</textarea>
-	// 	</div>
-	// 	<Markdown v-bind:Input="Input" />
-	// 	<Footer Copyright="2018 Brian" />
-	// </body>
-	// `, p))
-	return elem.Body(
-		render(`<div style="float: right">
+	return render(`<body>
+			<div style="float: right">
 				<textarea 
 					v-on:input="OnTextAreaChange" 
 					rows="14" 
 					cols="70" 
 					style="font-family: monospace;">{{.Input}}</textarea>
-			</div>`, p),
-		render(`<Markdown v-bind:Input="Input" />`, p),
-		render(`<Footer Copyright="2018 Jeff" />`, p),
-	)
+			</div>
+			<Markdown v-bind:Input="Input"></Markdown>
+			<Footer Copyright="2018 Jeff"></Footer>
+			<p>hi</p>
+		</body>`, p)
 }
 
 // Markdown is a simple component which renders the Input markdown as sanitized
@@ -132,7 +121,7 @@ type Footer struct {
 }
 
 func (m *Footer) template() string {
-	return `<div foo="bar" class="footer">{{ .Copyright }}</div>`
+	return `<div class="footer">{{ .Copyright }}</div>`
 }
 
 // Render implements the vecty.Component interface.
@@ -141,18 +130,17 @@ func (m *Footer) Render() vecty.ComponentOrHTML {
 }
 
 func render(tmpl string, v interface{}) vecty.ComponentOrHTML {
-	doc := &html.Node{
-		Type: html.ElementNode,
-		Data: "doc",
-	}
-	els, err := html.ParseFragment(strings.NewReader(tmpl), doc)
+	doc, err := html.Parse(strings.NewReader(tmpl))
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, v := range els {
-		doc.AppendChild(v)
+	// html.Parse always returns a full html document with head and body.
+	// if our template was for the body, grab the body, otherwise
+	// grab what's inside the body
+	if strings.HasPrefix(tmpl, "<body") {
+		return nodeToVecty(doc.LastChild.LastChild, v)
 	}
-	return nodeToVecty(doc.LastChild, v)
+	return nodeToVecty(doc.LastChild.LastChild.LastChild, v)
 }
 
 func nodeToVecty(n *html.Node, v interface{}) vecty.ComponentOrHTML {
@@ -160,6 +148,7 @@ func nodeToVecty(n *html.Node, v interface{}) vecty.ComponentOrHTML {
 	case html.ElementNode:
 		for name, comType := range registry {
 			if name == n.Data {
+				fmt.Println(name)
 				c := reflect.New(comType)
 				for _, a := range n.Attr {
 					for _, prop := range GetPropFields(comType) {
