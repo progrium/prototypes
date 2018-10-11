@@ -16,6 +16,21 @@ func (t Type) Fields() []string {
 	return f
 }
 
+func (t Type) FieldsTagged(key, value string) []string {
+	var f []string
+	for i := 0; i < t.NumField(); i++ {
+		v, ok := t.Field(i).Tag.Lookup(key)
+		if !ok {
+			continue
+		}
+		if value != "" && v != value {
+			continue
+		}
+		f = append(f, t.Field(i).Name)
+	}
+	return f
+}
+
 type Value struct {
 	v reflect.Value
 }
@@ -81,6 +96,25 @@ func (v Value) Iter() []Value {
 	return vals
 }
 
+func (v Value) Members() []string {
+	members := v.Props()
+	if v.v.Type().Kind() == reflect.Map {
+		return members
+	}
+	for _, m := range v.Methods() {
+		members = append(members, m)
+	}
+	return members
+}
+
+func (v Value) Methods() []string {
+	var methods []string
+	for idx := 0; idx < v.v.NumMethod(); idx++ {
+		methods = append(methods, v.v.Type().Method(idx).Name)
+	}
+	return methods
+}
+
 func (v Value) Props() []string {
 	if v.v.Type().Kind() == reflect.Map {
 		var keys []string
@@ -92,9 +126,8 @@ func (v Value) Props() []string {
 			keys = append(keys, k)
 		}
 		return keys
-	} else {
-		return v.Type().Fields()
 	}
+	return v.Type().Fields()
 }
 
 func (v Value) Get(f string) Value {
@@ -146,7 +179,7 @@ func (v Value) Invoke(args ...interface{}) []Value {
 // func (v Value) SetIndex(i int, x interface{})
 
 func New(t Type) Value {
-	return Value{v: reflect.New(t)}
+	return Value{v: reflect.New(t.Type)}
 }
 
 func (v Value) Type() Type {

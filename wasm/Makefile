@@ -1,3 +1,7 @@
+.PHONY: dev
 
 build:
-	GOARCH=wasm GOOS=js go build -o test.wasm main.go
+	GOARCH=wasm GOOS=js go build -o static/app.wasm .
+
+dev:
+	go run dev/main.go

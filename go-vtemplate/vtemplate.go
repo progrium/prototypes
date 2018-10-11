@@ -125,12 +125,6 @@ func (p *Parser) parseElement(n *Node, h *html.Node, data reflected.Value) (*Nod
 	if n.Type == NullNode {
 		return nil, nil
 	}
-	custom, ok := p.CustomElements[n.Name]
-	if ok {
-		n.Type = CustomNode
-		err := custom.Parse(n, h, data)
-		return n, err
-	}
 	if n.Children == nil {
 		for c := h.FirstChild; c != nil; c = c.NextSibling {
 			cn, err := p.ParseNode(c, data)
@@ -142,12 +136,24 @@ func (p *Parser) parseElement(n *Node, h *html.Node, data reflected.Value) (*Nod
 			}
 		}
 	}
+	custom, ok := p.CustomElements[n.Name]
+	if ok {
+		n.Type = CustomNode
+		var err error
+		if custom != nil {
+			err = custom.Parse(n, h, data)
+		}
+		return n, err
+	}
 	return n, nil
 }
 
 func (p *Parser) applyDirectives(n *Node, data reflected.Value) error {
 	for k, v := range n.Attrs {
-		exp := v.(string)
+		exp, ok := v.(string)
+		if !ok {
+			continue
+		}
 		if strings.HasPrefix(k, "v-") {
 			parts := strings.Split(k, ":")
 			var name, arg string
@@ -212,13 +218,13 @@ func (p *Parser) parseText(n *Node, h *html.Node, data reflected.Value) (*Node, 
 
 func (p *Parser) resolveExp(expression string, data reflected.Value) (reflected.Value, error) {
 	expression = strings.Trim(expression, " ")
-	for _, prop := range data.Props() {
+	for _, prop := range data.Members() {
 		if expression == prop {
 			return data.Get(prop), nil
 		}
 	}
 	if p.Evaluator == nil {
-		return reflected.Undefined(), fmt.Errorf("unable to resolve expression")
+		return reflected.Undefined(), fmt.Errorf("unable to resolve expression: '%s'", expression)
 	}
 	return p.Evaluator.Resolve(expression)
 }
