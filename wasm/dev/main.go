@@ -39,9 +39,22 @@ func ReloadServer(ws *websocket.Conn) {
 func main() {
 	flag.Parse()
 
+	lastBuild := time.Now()
 	go func() {
 		notifyChanges("./...", []string{".go"}, false, func(path string) {
-			buildAndRun()
+			if time.Now().Unix() > lastBuild.Add(1*time.Second).Unix() {
+				buildAndRun()
+				lastBuild = time.Now()
+			}
+		})
+	}()
+	go func() {
+		notifyChanges("./...", []string{".html"}, false, func(path string) {
+			if time.Now().Unix() > lastBuild.Add(1*time.Second).Unix() {
+				generate()
+				buildAndRun()
+				lastBuild = time.Now()
+			}
 		})
 	}()
 
@@ -107,5 +120,15 @@ func buildAndRun() error {
 		}
 	}
 	time.Sleep(100 * time.Millisecond)
+	return err
+}
+
+func generate() error {
+	cmd := exec.Command("sh", "-c", "go generate ./...")
+	output, err := cmd.CombinedOutput()
+	if !cmd.ProcessState.Success() {
+		log.Println("ERROR! Generate failed:")
+		fmt.Println(string(output))
+	}
 	return err
 }

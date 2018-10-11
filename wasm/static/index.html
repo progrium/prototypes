@@ -9,9 +9,7 @@ license that can be found in the LICENSE file.
 <head>
 	<meta charset="utf-8">
 	<title>Go wasm</title>
-</head>
 
-<body>
 	<script src="wasm.js"></script>
 	<script>
 		if (!WebAssembly.instantiateStreaming) { // polyfill
@@ -23,29 +21,33 @@ license that can be found in the LICENSE file.
 
 		const go = new Go();
 		let mod, inst;
-		WebAssembly.instantiateStreaming(fetch("app.wasm"), go.importObject).then((result) => {
-			mod = result.module;
-			inst = result.instance;
-			document.getElementById("runButton").disabled = false;
-			run();
-		});
 
-		async function run() {
-			console.clear();
-			await go.run(inst);
-			inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+		function reload() {
+			WebAssembly.instantiateStreaming(fetch("app.wasm"), go.importObject).then(async (result) => {
+				mod = result.module;
+				inst = result.instance;
+				//console.clear();
+				await go.run(inst);
+				inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+			});
+			var ws = new WebSocket("ws://localhost:8080/reload");
+			ws.onopen = () => {
+				console.log("Reloader ready...");
+
+			}
+			ws.onmessage = () => {
+				ws.close();
+				reload();
+			}
 		}
+		
+
 	</script>
+</head>
 
-	<button onClick="run();" id="runButton" disabled>Run</button>
+<body>
 	<script>
-		var ws = new WebSocket("ws://localhost:8080/reload");
-		ws.onopen = () => {
-			console.log("Reloader ready...");
-		}
-		ws.onmessage = () => {
-			window.location.reload();
-		}
+		reload()
 	</script>
 </body>
 

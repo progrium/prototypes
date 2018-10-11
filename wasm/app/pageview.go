@@ -1,9 +1,17 @@
 package app
 
-import "github.com/gowasm/vecty"
+import (
+	"github.com/gowasm/vecty"
+	"github.com/progrium/prototypes/wasm/pkg/webui"
+)
+
+func init() {
+	webui.Register(PageView{})
+}
 
 type PageView struct {
 	vecty.Core
+
 	Input string
 }
 
@@ -14,19 +22,6 @@ func (p *PageView) OnTextAreaChange(e *vecty.Event) {
 	vecty.Rerender(p)
 }
 
-// Render implements the vecty.Component interface.
 func (p *PageView) Render() vecty.ComponentOrHTML {
-	return render(`<body> 
-			<div style="float: right">
-				<textarea 
-					v-on:input="OnTextAreaChange" 
-					rows="14" 
-					cols="70" 
-					style="font-family: monospace;">{{Input}}</textarea>
-			</div>
-			<Markdown v-bind:Input="Input"></Markdown>
-			<Footer Copyright="2018 Jeff">
-				<p>Hello worlds</p>
-			</Footer> 
-		</body>`, p)
+	return webui.Render(p)
 }
