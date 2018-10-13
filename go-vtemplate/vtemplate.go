@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	reflected "github.com/progrium/prototypes/go-reflected"
-	"golang.org/x/net/html"
+	html "github.com/progrium/prototypes/go-vtemplate/parser"
 )
 
 type NodeType uint32
@@ -51,7 +51,7 @@ type Directive interface {
 type Evaluator interface {
 	Set(name string, value interface{})
 	Unset(name string)
-	Resolve(exp string) (reflected.Value, error)
+	Eval(exp string) (reflected.Value, error)
 }
 
 type Parser struct {
@@ -88,17 +88,21 @@ func (p *Parser) Parse(r io.Reader, data interface{}) (*Node, error) {
 	rdata := reflected.ValueOf(data)
 	// html.Parse always returns a full html document with head and body.
 	// if our template was for the body, grab the body, otherwise
-	// grab what's inside the body
+	// grab what's inside the body. TODO: more edge cases
+	root := doc.LastChild.LastChild.LastChild
 	if strings.HasPrefix(buf.String(), "<body") {
-		return p.ParseNode(doc.LastChild.LastChild, rdata)
+		root = doc.LastChild.LastChild
 	}
-	return p.ParseNode(doc.LastChild.LastChild.LastChild, rdata)
+	if root == nil {
+		return nil, fmt.Errorf("unable to find root node")
+	}
+	return p.ParseNode(root, rdata)
 }
 
 func (p *Parser) ParseNode(h *html.Node, data reflected.Value) (*Node, error) {
 	n := &Node{Html: h, Data: data}
 	if p.Evaluator != nil {
-		for _, f := range data.Props() {
+		for _, f := range data.Keys() {
 			p.Evaluator.Set(f, data.Get(f).Interface())
 		}
 	}
@@ -173,7 +177,7 @@ func (p *Parser) applyDirectives(n *Node, data reflected.Value) error {
 				iterVar = parts[0]
 				exp = parts[1]
 			}
-			val, err := p.resolveExp(exp, data)
+			val, err := p.eval(exp, data)
 			if err != nil {
 				return err
 			}
@@ -203,7 +207,7 @@ func (p *Parser) parseText(n *Node, h *html.Node, data reflected.Value) (*Node, 
 	var errs []error
 	n.Type = TextNode
 	n.Text = p.interpRegex.ReplaceAllStringFunc(text, func(tag string) string {
-		v, err := p.resolveExp(tag[2:len(tag)-2], data)
+		v, err := p.eval(tag[2:len(tag)-2], data)
 		if err != nil {
 			errs = append(errs, err)
 			return ""
@@ -216,7 +220,7 @@ func (p *Parser) parseText(n *Node, h *html.Node, data reflected.Value) (*Node, 
 	return n, nil
 }
 
-func (p *Parser) resolveExp(expression string, data reflected.Value) (reflected.Value, error) {
+func (p *Parser) eval(expression string, data reflected.Value) (reflected.Value, error) {
 	expression = strings.Trim(expression, " ")
 	for _, prop := range data.Members() {
 		if expression == prop {
@@ -224,7 +228,7 @@ func (p *Parser) resolveExp(expression string, data reflected.Value) (reflected.
 		}
 	}
 	if p.Evaluator == nil {
-		return reflected.Undefined(), fmt.Errorf("unable to resolve expression: '%s'", expression)
+		return reflected.Undefined(), fmt.Errorf("unable to evaluate expression: '%s'", expression)
 	}
-	return p.Evaluator.Resolve(expression)
+	return p.Evaluator.Eval(expression)
 }

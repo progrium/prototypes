@@ -1,8 +1,6 @@
 package vecty
 
 import (
-	"strings"
-
 	"github.com/gowasm/vecty"
 	reflected "github.com/progrium/prototypes/go-reflected"
 	vtemplate "github.com/progrium/prototypes/go-vtemplate"
@@ -22,12 +20,18 @@ type OnDirective struct{}
 
 func (d OnDirective) Apply(b vtemplate.Binding) error {
 	rcvr := b.Node.Data
-	method := b.Expression
+	callback := b.Expression
+	listener := func(e *vecty.Event) {
+		rcvr.Get(callback).Invoke(e)
+	}
+	if rcvr.Type().HasMethod(callback) {
+		listener = func(e *vecty.Event) {
+			rcvr.Call(callback, e)
+		}
+	}
 	b.Node.Attrs[b.Argument] = &vecty.EventListener{
-		Name: b.Argument,
-		Listener: func(e *vecty.Event) {
-			rcvr.Call(method, e)
-		},
+		Name:     b.Argument,
+		Listener: listener,
 	}
 	return nil
 }
@@ -37,13 +41,17 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 	case vtemplate.CustomNode:
 		for _, proto := range c {
 			comType := reflected.ValueOf(proto).Type()
-			comName := strings.ToLower(comType.Name())
-			if comName == n.Name {
+			if comType.Name() == n.Name {
+				refName := ""
 				com := reflected.New(comType)
 				for k, v := range n.Attrs {
+					if k == "ref" {
+						refName = v.(string)
+						continue
+					}
 					for _, prop := range comType.Fields() {
 						// TODO: only set for fields tagged as prop
-						if k == strings.ToLower(prop) {
+						if k == prop {
 							com.Set(prop, v)
 						}
 					}
@@ -59,8 +67,18 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 						com.Set(slotFields[0], vecty.List(slot))
 					}
 				}
-				ch := com.Interface().(vecty.ComponentOrHTML)
-				return ch
+				ch := com.Interface()
+				if refName != "" {
+					rv := reflected.ValueOf(v)
+					refFields := rv.Type().FieldsTagged("vecty", "ref")
+					for _, f := range refFields {
+						if f == refName {
+							rv.Set(refName, ch)
+							break
+						}
+					}
+				}
+				return ch.(vecty.ComponentOrHTML)
 			}
 		}
 		// no component found
@@ -74,8 +92,13 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 			}
 			return vecty.Text("")
 		}
+		refName := ""
 		var applyers []vecty.Applyer
 		for key, val := range n.Attrs {
+			if key == "ref" {
+				refName = val.(string)
+				continue
+			}
 			switch tval := val.(type) {
 			case *vecty.EventListener:
 				applyers = append(applyers, tval)
@@ -95,7 +118,18 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 				children = append(children, res)
 			}
 		}
-		return vecty.Tag(n.Name, children...)
+		el := vecty.Tag(n.Name, children...)
+		if refName != "" {
+			rv := reflected.ValueOf(v)
+			refFields := rv.Type().FieldsTagged("vecty", "ref")
+			for _, f := range refFields {
+				if f == refName {
+					rv.Set(refName, el)
+					break
+				}
+			}
+		}
+		return el
 	case vtemplate.TextNode:
 		return vecty.Text(n.Text)
 	default:

@@ -22,7 +22,7 @@ func (e *evaluator) Set(name string, value interface{}) {
 func (e *evaluator) Unset(name string) {
 	e.Runtime.Set(name, goja.Undefined())
 }
-func (e *evaluator) Resolve(exp string) (reflected.Value, error) {
+func (e *evaluator) Eval(exp string) (reflected.Value, error) {
 	v, err := e.RunString(exp)
 	if err != nil {
 		return reflected.Undefined(), err

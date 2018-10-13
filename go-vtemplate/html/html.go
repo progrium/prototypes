@@ -43,15 +43,15 @@ func (d ForDirective) Apply(b vtemplate.Binding) error {
 	}
 	// create reflected map and copy data into it.
 	// this lets us add values to it
-	nv := reflected.ValueOf(map[string]interface{}{})
-	for _, key := range b.Node.Data.Props() {
-		nv.Set(key, b.Node.Data.Get(key).Interface())
+	mv := reflected.ValueOf(map[string]interface{}{})
+	for _, key := range b.Node.Data.Keys() {
+		mv.Set(key, b.Node.Data.Get(key).Interface())
 	}
 	b.Node.Children = nil
 	for _, v := range b.Value.Iter() {
-		nv.Set(b.IterVar, v.Interface())
+		mv.Set(b.IterVar, v.Interface())
 		for c := b.Node.Html.FirstChild; c != nil; c = c.NextSibling {
-			cn, err := b.Parser.ParseNode(c, nv)
+			cn, err := b.Parser.ParseNode(c, mv)
 			if err != nil {
 				return err
 			}
