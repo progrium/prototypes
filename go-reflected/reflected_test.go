@@ -1,11 +1,14 @@
 package reflected
 
-import "testing"
+import (
+	"sort"
+	"testing"
+)
 
 type TestValue struct {
-	StringField       string
-	IntField          int
-	BoolField         bool
+	StringField       string `test:""`
+	IntField          int    `test:"foo"`
+	BoolField         bool   `test:"bar"`
 	FloatField        float64
 	noArgsNoRetCalled bool
 }
@@ -46,6 +49,11 @@ func TestTypedValues(t *testing.T) {
 	v = ValueOf("test")
 	if v.String() != "test" {
 		t.Fatalf("got %v, want %v", v.String(), "test")
+	}
+
+	v = ValueOf(&TestValue{})
+	if _, ok := v.Interface().(*TestValue); !ok {
+		t.Fatalf("unable to type assert to value of underlying type")
 	}
 }
 
@@ -138,6 +146,17 @@ func TestFunctionInvoke(t *testing.T) {
 
 }
 
+func TestFunctionInvokeMethod(t *testing.T) {
+	v := ValueOf(&TestValue{})
+	m := v.Get("Echo")
+
+	ret := m.Invoke("test")
+	if ret[0].String() != "test" {
+		t.Fatalf("got %v, want %v", ret[0].String(), "test")
+	}
+
+}
+
 func TestGetSetMaps(t *testing.T) {
 	value := map[string]interface{}{}
 	v := ValueOf(value)
@@ -147,4 +166,188 @@ func TestGetSetMaps(t *testing.T) {
 	if ret.String() != "bar" {
 		t.Fatalf("got %v, want %v", ret.String(), "bar")
 	}
+}
+
+func TestGetSetFields(t *testing.T) {
+	value := &TestValue{}
+	v := ValueOf(value)
+
+	v.Set("StringField", "test")
+	ret := v.Get("StringField")
+	if ret.String() != "test" {
+		t.Fatalf("got %v, want %v", ret.String(), "test")
+	}
+}
+
+func TestLen(t *testing.T) {
+	v := ValueOf("test")
+	if v.Len() != 4 {
+		t.Fatalf("got %v, want %v", v.Len(), 4)
+	}
+
+	v = ValueOf([]string{"one", "two", "three"})
+	if v.Len() != 3 {
+		t.Fatalf("got %v, want %v", v.Len(), 3)
+	}
+
+	// TODO: channels, etc
+}
+
+func TestTypeFields(t *testing.T) {
+	typ := ValueOf(&TestValue{}).Type()
+
+	fields := typ.Fields()
+	expect := []string{"StringField", "IntField", "BoolField", "FloatField"}
+	if !eqStringSlice(fields, expect) {
+		t.Fatalf("got %v, want %v", fields, expect)
+	}
+
+	got := typ.HasField("StringField")
+	if !got {
+		t.Fatalf("got %v, want %v", got, true)
+	}
+}
+
+func TestTypeMethods(t *testing.T) {
+	typ := ValueOf(&TestValue{}).Type()
+
+	methods := typ.Methods()
+	expect := []string{"Echo", "MultiEcho", "NoArgsNoRet", "VariadicEcho"}
+	if !eqStringSlice(methods, expect) {
+		t.Fatalf("got %v, want %v", methods, expect)
+	}
+
+	got := typ.HasMethod("Echo")
+	if !got {
+		t.Fatalf("got %v, want %v", got, true)
+	}
+}
+
+func TestMethods(t *testing.T) {
+	v := ValueOf(&TestValue{})
+
+	methods := v.Methods()
+	expect := []string{"Echo", "MultiEcho", "NoArgsNoRet", "VariadicEcho"}
+	if !eqStringSlice(methods, expect) {
+		t.Fatalf("got %v, want %v", methods, expect)
+	}
+
+	got := v.HasMethod("Echo")
+	if !got {
+		t.Fatalf("got %v, want %v", got, true)
+	}
+}
+
+func TestMembers(t *testing.T) {
+	v := ValueOf(&TestValue{})
+
+	members := v.Members()
+	expect := []string{"StringField", "IntField", "BoolField", "FloatField", "Echo", "MultiEcho", "NoArgsNoRet", "VariadicEcho"}
+	if !eqStringSlice(members, expect) {
+		t.Fatalf("got %v, want %v", members, expect)
+	}
+
+	got := v.HasMember("Echo")
+	if !got {
+		t.Fatalf("got %v, want %v", got, true)
+	}
+}
+
+func TestKeysStruct(t *testing.T) {
+	v := ValueOf(&TestValue{})
+
+	fields := v.Keys()
+	expect := []string{"StringField", "IntField", "BoolField", "FloatField"}
+	if !eqStringSlice(fields, expect) {
+		t.Fatalf("got %v, want %v", fields, expect)
+	}
+
+	got := v.HasKey("StringField")
+	if !got {
+		t.Fatalf("got %v, want %v", got, true)
+	}
+}
+
+func TestKeysMap(t *testing.T) {
+	v := ValueOf(map[string]interface{}{
+		"one":   nil,
+		"two":   nil,
+		"three": nil,
+	})
+
+	keys := v.Keys()
+	sort.Strings(keys)
+	expect := []string{"one", "three", "two"}
+	if !eqStringSlice(keys, expect) {
+		t.Fatalf("got %v, want %v", keys, expect)
+	}
+
+	got := v.HasKey("three")
+	if !got {
+		t.Fatalf("got %v, want %v", got, true)
+	}
+}
+
+func TestTypeTaggedFields(t *testing.T) {
+	typ := ValueOf(&TestValue{}).Type()
+
+	withKey := typ.FieldsTagged("test", "")
+	expect := []string{"StringField", "IntField", "BoolField"}
+	if !eqStringSlice(withKey, expect) {
+		t.Fatalf("got %v, want %v", withKey, expect)
+	}
+
+	withKeyValue := typ.FieldsTagged("test", "foo")
+	expect = []string{"IntField"}
+	if !eqStringSlice(withKeyValue, expect) {
+		t.Fatalf("got %v, want %v", withKeyValue, expect)
+	}
+}
+
+func TestIter(t *testing.T) {
+	fields := ValueOf(&TestValue{}).Type().Fields()
+	rfields := ValueOf(fields)
+
+	var f []string
+	for _, v := range rfields.Iter() {
+		f = append(f, v.String())
+	}
+	if !eqStringSlice(f, fields) {
+		t.Fatalf("got %v, want %v", f, fields)
+	}
+}
+
+func TestIndex(t *testing.T) {
+	v := ValueOf([]string{"one", "two", "three"})
+
+	got := v.Index(1).String()
+	if got != "two" {
+		t.Fatalf("got %v, want %v", got, "two")
+	}
+
+	v.SetIndex(1, "TWO")
+	got = v.Index(1).String()
+	if got != "TWO" {
+		t.Fatalf("got %v, want %v", got, "TWO")
+	}
+}
+
+func eqStringSlice(a, b []string) bool {
+
+	// If one is nil, the other must also be nil.
+	if (a == nil) != (b == nil) {
+		return false
+	}
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
 }
