@@ -1,0 +1,61 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.3/semantic.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.5/themes/default/style.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jqpropertygrid@1.0.0/jqPropertyGrid.css">
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.3/semantic.min.js"></script>        
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css">
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.5/jstree.min.js"></script>
+        <script src="./jqPropertyGrid.js"></script>
+        <style>
+            #properties table {
+                width: 80%;
+            }
+            #properties tr.pgRow td:first-child {
+                width: 25%;
+            }
+        </style>
+	<script src="wasm.js"></script>
+	<script>
+		if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
+		const go = new Go();
+		let mod, inst;
+
+		function reload() {
+			WebAssembly.instantiateStreaming(fetch("app.wasm"), go.importObject).then(async (result) => {
+				mod = result.module;
+				inst = result.instance;
+				//console.clear();
+				await go.run(inst);
+				inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+			});
+			var ws = new WebSocket("ws://localhost:8080/reload");
+			ws.onopen = () => {
+				console.log("Reloader ready...");
+
+			}
+			ws.onmessage = () => {
+				ws.close();
+				reload();
+			}
+		}
+		reload()
+	</script>
+</head>
+
+<body></body>
+
+</html>

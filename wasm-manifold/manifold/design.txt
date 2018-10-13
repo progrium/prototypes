@@ -1,0 +1,27 @@
+youtube.Client
+	user
+	token expire
+	auth()
+
+twitch.Client
+	Replicate (Events)
+		Interval
+		Backlog
+		UpdateNow()
+
+status.Icon
+menu.Menu
+Component
+	  (twitch.Client)
+	  (youtube.Client)
+	  OnClick()
+
+	menu.Item
+	  (Menu)
+	  Text
+	  OnClick
+	Profile
+		tags
+		notification
+		name?
+
