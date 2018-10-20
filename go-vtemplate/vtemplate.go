@@ -89,7 +89,7 @@ func (p *Parser) Parse(r io.Reader, data interface{}) (*Node, error) {
 	// html.Parse always returns a full html document with head and body.
 	// if our template was for the body, grab the body, otherwise
 	// grab what's inside the body. TODO: more edge cases
-	root := doc.LastChild.LastChild.LastChild
+	root := doc.LastChild.LastChild.FirstChild
 	if strings.HasPrefix(buf.String(), "<body") {
 		root = doc.LastChild.LastChild
 	}
