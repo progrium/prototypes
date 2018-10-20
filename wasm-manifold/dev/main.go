@@ -106,7 +106,7 @@ func notifyChanges(dir string, exts []string, onlyCreate bool, cb func(path stri
 
 func buildAndRun() error {
 	start := time.Now()
-	cmd := exec.Command("sh", "-c", "GOARCH=wasm GOOS=js go build -o static/app.wasm ./wasm")
+	cmd := exec.Command("sh", "-c", "go generate ./...")
 	output, err := cmd.CombinedOutput()
 	if !cmd.ProcessState.Success() {
 		buildErrored = true

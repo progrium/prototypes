@@ -1,3 +1,5 @@
+trello.Client
+
 youtube.Client
 	user
 	token expire
@@ -9,7 +11,7 @@ twitch.Client
 		Backlog
 		UpdateNow()
 
-status.Icon
+status.Item
 menu.Menu
 Component
 	  (twitch.Client)
@@ -24,4 +26,14 @@ Component
 		tags
 		notification
 		name?
+
+===
+
+spotify.App
+status.Item
+timer.Interval
+Component
+	OnInterval()
+
+===
 

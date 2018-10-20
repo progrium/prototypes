@@ -7,6 +7,7 @@ import (
 	"github.com/gowasm/vecty"
 	reflected "github.com/progrium/prototypes/go-reflected"
 	vtemplate "github.com/progrium/prototypes/go-vtemplate"
+	"github.com/progrium/prototypes/go-vtemplate/goja"
 	vectytemplate "github.com/progrium/prototypes/go-vtemplate/vecty"
 )
 
@@ -45,7 +46,7 @@ func Render(v interface{}) vecty.ComponentOrHTML {
 	}
 	p := &vtemplate.Parser{
 		Directives:     vectytemplate.BuiltinDirectives(),
-		Evaluator:      nil,
+		Evaluator:      goja.Evaluator(),
 		CustomElements: registryElements(),
 	}
 	n, err := p.Parse(tmpl, v)

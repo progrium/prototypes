@@ -102,7 +102,7 @@ func (p *Parser) Parse(r io.Reader, data interface{}) (*Node, error) {
 func (p *Parser) ParseNode(h *html.Node, data reflected.Value) (*Node, error) {
 	n := &Node{Html: h, Data: data}
 	if p.Evaluator != nil {
-		for _, f := range data.Keys() {
+		for _, f := range data.Members() {
 			p.Evaluator.Set(f, data.Get(f).Interface())
 		}
 	}

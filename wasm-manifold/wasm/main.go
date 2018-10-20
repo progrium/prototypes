@@ -1,3 +1,4 @@
+//go:generate sh -c "GOARCH=wasm GOOS=js go build -o ../static/app.wasm ."
 package main
 
 import (

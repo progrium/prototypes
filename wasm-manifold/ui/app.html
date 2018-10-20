@@ -2,9 +2,7 @@
     <div style="width: 20%; float: left;">
         <Button v-bind:OnClick="OnAdd">Add</Button>
         <Button v-bind:OnClick="OnReset">Reset</Button>
-        <TreeView 
-            ref="TreeView" 
-            v-bind:OnSelect="OnSelect"
-            v-bind:OnChange="OnChange"></TreeView>
+        <div id="jstree"></div>
+        <TreeView ref="TreeView"></TreeView>
     </div>
 </body>

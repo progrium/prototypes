@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"syscall/js"
 
 	"github.com/gowasm/vecty"
@@ -19,28 +18,16 @@ type App struct {
 }
 
 func (c *App) OnReset(e *vecty.Event) {
-	js.Global().Get("localStorage").Call("setItem", "jstree", "[]")
+	js.Global().Get("localStorage").Call("setItem", "tree_nodes", "[]")
+	js.Global().Get("localStorage").Call("setItem", "tree_nodeIDs", "{}")
 	js.Global().Get("location").Call("reload")
 }
 
 func (c *App) OnAdd(e *vecty.Event) {
 	var name = js.Global().Call("prompt", "New object").String()
-	c.TreeView.CreateNode(map[string]interface{}{
-		"text": name,
-		"obj": map[string]interface{}{
-			"_": map[string]interface{}{
-				"name": name,
-			},
-		},
+	c.TreeView.CreateNode(TreeNode{
+		Text: name,
 	})
-}
-
-func (c *App) OnSelect() {
-	fmt.Println(c.TreeView.SelectedNode().Get("text").String())
-}
-
-func (c *App) OnChange() {
-	fmt.Println("CHANGE")
 }
 
 func (c *App) Mount() {
