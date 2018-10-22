@@ -1,13 +1,12 @@
 package ui
 
 import (
-	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/gopherjs/gopherwasm/js"
 	"github.com/gowasm/vecty"
 	"github.com/progrium/prototypes/go-webui"
+	"github.com/progrium/prototypes/wasm-manifold/manifold"
 )
 
 func init() {
@@ -17,78 +16,54 @@ func init() {
 type TreeView struct {
 	vecty.Core
 
-	nodes   []*TreeNode
-	nodeIDs map[string]*TreeNode
+	root *manifold.Node
 
 	selectedID string
 	mounted    bool
 }
 
-func (c *TreeView) CreateNode(node TreeNode) {
-	if node.ID == "" {
-		node.ID = fmt.Sprintf("n%d", time.Now().Unix())
-	}
-	node.Loaded = true
-	c.nodes = append(c.nodes, &node)
-	c.nodeIDs[node.ID] = &node
+func (c *TreeView) CreateNode(node *manifold.Node) {
+	c.root.Append(node)
 	vecty.Rerender(c)
 	c.Save()
 }
 
 func (c *TreeView) Save() {
-	nodes, err := json.Marshal(c.nodes)
+	nodes, err := manifold.Marshal(c.root)
 	if err != nil {
 		panic(err)
 	}
-	nodeIDs, err := json.Marshal(c.nodeIDs)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println(string(nodes))
 	js.Global().Get("localStorage").Call("setItem", "tree_nodes", string(nodes))
-	js.Global().Get("localStorage").Call("setItem", "tree_nodeIDs", string(nodeIDs))
 }
 
-func (c *TreeView) insertNode(node *TreeNode, parent string, idx int) {
-	if parent == "#" {
-		c.nodes = append(c.nodes[:idx], append([]*TreeNode{node}, c.nodes[idx:]...)...)
-	} else {
-		c.nodeIDs[parent].Children = append(c.nodeIDs[parent].Children[:idx], append([]*TreeNode{node}, c.nodeIDs[parent].Children[idx:]...)...)
+func (c *TreeView) insertNode(node *manifold.Node, parent string, idx int) {
+	p := c.root.FindID(parent)
+	if p == nil {
+		panic("parent id not found")
 	}
-	c.nodeIDs[node.ID] = node
+	p.Insert(idx, node)
 }
 
 func (c *TreeView) deleteNode(id, parent string) {
-	var children []*TreeNode
-	if parent == "#" {
-		children = c.nodes
-	} else {
-		children = c.nodeIDs[parent].Children
+	p := c.root.FindID(parent)
+	if p == nil {
+		panic("parent id not found " + parent)
 	}
-	for idx := 0; idx < len(children); idx++ {
-		if children[idx].ID == id {
-			if parent == "#" {
-				c.nodes = append(children[:idx], children[idx+1:]...)
-			} else {
-				c.nodeIDs[parent].Children = append(children[:idx], children[idx+1:]...)
-			}
-			break
-		}
-	}
-	delete(c.nodeIDs, id)
+	p.Remove(id)
 }
 
 func (c *TreeView) Mount() {
-	err := json.Unmarshal([]byte(js.Global().Get("localStorage").Call("getItem", "tree_nodes").String()), &(c.nodes))
+	n, err := manifold.Unmarshal([]byte(js.Global().Get("localStorage").Call("getItem", "tree_nodes").String()))
 	if err != nil {
 		panic(err)
 	}
-	err = json.Unmarshal([]byte(js.Global().Get("localStorage").Call("getItem", "tree_nodeIDs").String()), &(c.nodeIDs))
-	if err != nil {
-		panic(err)
+	c.root = n
+	var components []interface{}
+	for _, n := range manifold.RegisteredComponents() {
+		components = append(components, n)
 	}
-	if c.nodeIDs == nil {
-		c.nodeIDs = make(map[string]*TreeNode)
-	}
+	js.Global().Set("components", components)
 	js.Global().Call("$", "#jstree").Call("jstree", map[string]interface{}{
 		"core": map[string]interface{}{
 			"themes": map[string]interface{}{
@@ -102,11 +77,20 @@ func (c *TreeView) Mount() {
 			"default": map[string]interface{}{
 				"icon": "file icon",
 			},
-			"demo": map[string]interface{}{
-				"icon": "braille icon",
-			},
+		},
+		"contextmenu": map[string]interface{}{
+			"items": js.Global().Get("contextMenu"),
 		},
 	})
+	js.Global().Set("addComponent", js.NewCallback(func(args []js.Value) {
+		id := args[0].String()
+		com := args[1].String()
+		node := c.root.FindID(id)
+		if node == nil {
+			panic("node not found")
+		}
+		node.Components.Append(manifold.NewComponent(com))
+	}))
 	// js.Global().Call("$", "#jstree").Call("on", "create_node.jstree", js.NewCallback(func(args []js.Value) {
 	// 	js.Global().Get("console").Call("log", args[0], args[1])
 	// }))
@@ -115,7 +99,10 @@ func (c *TreeView) Mount() {
 		op := args[1].Get("old_parent").String()
 		pos := args[1].Get("position").Int()
 		id := args[1].Get("node").Get("id").String()
-		node := c.nodeIDs[id]
+		node := c.root.FindID(id)
+		if node == nil {
+			panic("node not found " + id)
+		}
 		c.deleteNode(id, op)
 		c.insertNode(node, p, pos)
 		vecty.Rerender(c)
@@ -130,7 +117,11 @@ func (c *TreeView) Mount() {
 	}))
 	js.Global().Call("$", "#jstree").Call("on", "rename_node.jstree", js.NewCallback(func(args []js.Value) {
 		id := args[1].Get("node").Get("id").String()
-		c.nodeIDs[id].Text = args[1].Get("node").Get("text").String()
+		node := c.root.FindID(id)
+		if node == nil {
+			panic("node not found " + id)
+		}
+		node.SetName(args[1].Get("node").Get("text").String())
 		vecty.Rerender(c)
 		c.Save()
 	}))
@@ -145,11 +136,7 @@ func (c *TreeView) Mount() {
 }
 
 func (c *TreeView) Refresh() {
-	var nodes []interface{}
-	for _, n := range c.nodes {
-		nodes = append(nodes, n.Map())
-	}
-	js.Global().Call("$", "#jstree").Call("jstree", true).Get("settings").Get("core").Set("data", nodes)
+	js.Global().Call("$", "#jstree").Call("jstree", true).Get("settings").Get("core").Set("data", c.root.TreeNode()["children"])
 	js.Global().Call("$", "#jstree").Call("jstree", true).Call("refresh")
 }
 

@@ -5,4 +5,35 @@
         <div id="jstree"></div>
         <TreeView ref="TreeView"></TreeView>
     </div>
+    <script>
+    var components = []
+    function contextMenu(node) {
+      var jstree = $("#jstree").jstree(true)
+      return {
+          "Delete": {
+              "label": "Delete",
+              "action": function() {
+                  jstree.delete_node(node.id);
+              }
+          },
+          "Rename": {
+            "label": "Rename",
+            "action": function() {
+                jstree.edit(node.id);
+            }
+          },
+          "Add": {
+            "label": "Add",
+            "submenu": components.map(function(c) {
+              return {
+                "label": c,
+                "action": function() {
+                  addComponent(node.id, c)
+                }
+              }
+            })
+          }
+        }
+      }
+    </script>
 </body>

@@ -6,6 +6,8 @@ import (
 	webui "github.com/progrium/prototypes/go-webui"
 	"github.com/progrium/prototypes/wasm-manifold/assets"
 	"github.com/progrium/prototypes/wasm-manifold/ui"
+
+	_ "github.com/progrium/prototypes/wasm-manifold/manifold/dev"
 )
 
 func main() {

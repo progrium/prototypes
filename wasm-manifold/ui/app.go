@@ -5,6 +5,7 @@ import (
 
 	"github.com/gowasm/vecty"
 	"github.com/progrium/prototypes/go-webui"
+	"github.com/progrium/prototypes/wasm-manifold/manifold"
 )
 
 func init() {
@@ -18,16 +19,13 @@ type App struct {
 }
 
 func (c *App) OnReset(e *vecty.Event) {
-	js.Global().Get("localStorage").Call("setItem", "tree_nodes", "[]")
-	js.Global().Get("localStorage").Call("setItem", "tree_nodeIDs", "{}")
+	js.Global().Get("localStorage").Call("setItem", "tree_nodes", "{}")
 	js.Global().Get("location").Call("reload")
 }
 
 func (c *App) OnAdd(e *vecty.Event) {
 	var name = js.Global().Call("prompt", "New object").String()
-	c.TreeView.CreateNode(TreeNode{
-		Text: name,
-	})
+	c.TreeView.CreateNode(manifold.NewNode(name))
 }
 
 func (c *App) Mount() {
