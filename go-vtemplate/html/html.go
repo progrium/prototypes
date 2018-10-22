@@ -3,6 +3,7 @@ package html
 import (
 	"fmt"
 	"io"
+	"reflect"
 
 	reflected "github.com/progrium/prototypes/go-reflected"
 	vtemplate "github.com/progrium/prototypes/go-vtemplate"
@@ -19,7 +20,13 @@ func BuiltinDirectives() map[string]vtemplate.Directive {
 type IfDirective struct{}
 
 func (d IfDirective) Apply(b vtemplate.Binding) error {
-	if b.Value == reflected.Undefined() || !b.Value.Bool() {
+	if b.Value == reflected.Undefined() {
+		b.Node.Type = vtemplate.NullNode
+	}
+	if b.Value.Kind() == reflect.Ptr && b.Value.IsNil() {
+		b.Node.Type = vtemplate.NullNode
+	}
+	if b.Value.Kind() == reflect.Bool && !b.Value.Bool() {
 		b.Node.Type = vtemplate.NullNode
 	}
 	return nil
@@ -59,6 +66,9 @@ func (d ForDirective) Apply(b vtemplate.Binding) error {
 				b.Node.Children = append(b.Node.Children, cn)
 			}
 		}
+	}
+	if len(b.Node.Children) == 0 {
+		b.Node.Type = vtemplate.NullNode
 	}
 	return nil
 }
