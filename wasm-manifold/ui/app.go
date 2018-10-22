@@ -15,7 +15,8 @@ func init() {
 type App struct {
 	vecty.Core
 
-	TreeView *TreeView `vecty:"ref"`
+	TreeView  *TreeView  `vecty:"ref"`
+	Inspector *Inspector `vecty:"ref"`
 }
 
 func (c *App) OnReset(e *vecty.Event) {
@@ -24,8 +25,16 @@ func (c *App) OnReset(e *vecty.Event) {
 }
 
 func (c *App) OnAdd(e *vecty.Event) {
-	var name = js.Global().Call("prompt", "New object").String()
-	c.TreeView.CreateNode(manifold.NewNode(name))
+	ret := js.Global().Call("prompt", "New object")
+	if ret == js.Null() {
+		return
+	}
+	c.TreeView.CreateNode(manifold.NewNode(ret.String()))
+}
+
+func (c *App) OnSelect(n *manifold.Node) {
+	c.Inspector.Node = n
+	vecty.Rerender(c.Inspector)
 }
 
 func (c *App) Mount() {

@@ -1,0 +1,9 @@
+<div>
+    <div class="active title">
+        <i class="dropdown icon"></i>
+        {{ Name }}
+    </div>
+    <div class="active content ui form" v-for="Field in Fields">
+        <PropertyField v-bind:Name="Field"></PropertyField>
+    </div>
+</div>

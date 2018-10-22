@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gopherjs/gopherwasm/js"
@@ -18,6 +19,8 @@ type TreeView struct {
 
 	root *manifold.Node
 
+	OnSelect func(*manifold.Node)
+
 	selectedID string
 	mounted    bool
 }
@@ -29,12 +32,12 @@ func (c *TreeView) CreateNode(node *manifold.Node) {
 }
 
 func (c *TreeView) Save() {
-	nodes, err := manifold.Marshal(c.root)
+	b, err := json.Marshal(c.root)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(nodes))
-	js.Global().Get("localStorage").Call("setItem", "tree_nodes", string(nodes))
+	fmt.Println(string(b))
+	js.Global().Get("localStorage").Call("setItem", "tree_nodes", string(b))
 }
 
 func (c *TreeView) insertNode(node *manifold.Node, parent string, idx int) {
@@ -54,11 +57,14 @@ func (c *TreeView) deleteNode(id, parent string) {
 }
 
 func (c *TreeView) Mount() {
-	n, err := manifold.Unmarshal([]byte(js.Global().Get("localStorage").Call("getItem", "tree_nodes").String()))
+	var n manifold.Node
+	err := json.Unmarshal([]byte(js.Global().Get("localStorage").Call("getItem", "tree_nodes").String()), &n)
 	if err != nil {
+		js.Global().Get("localStorage").Call("setItem", "tree_nodes", "{}")
 		panic(err)
 	}
-	c.root = n
+	c.root = &n
+	c.root.ID = "#"
 	var components []interface{}
 	for _, n := range manifold.RegisteredComponents() {
 		components = append(components, n)
@@ -89,7 +95,7 @@ func (c *TreeView) Mount() {
 		if node == nil {
 			panic("node not found")
 		}
-		node.Components.Append(manifold.NewComponent(com))
+		node.ComponentSet.Append(manifold.NewComponent(com))
 	}))
 	// js.Global().Call("$", "#jstree").Call("on", "create_node.jstree", js.NewCallback(func(args []js.Value) {
 	// 	js.Global().Get("console").Call("log", args[0], args[1])
@@ -121,16 +127,17 @@ func (c *TreeView) Mount() {
 		if node == nil {
 			panic("node not found " + id)
 		}
-		node.SetName(args[1].Get("node").Get("text").String())
+		node.Name = args[1].Get("node").Get("text").String()
 		vecty.Rerender(c)
 		c.Save()
 	}))
-	// c.Element.Node().Call("on", "activate_node.jstree",
-	// 	c.selectedID = args[1].Get("node").Get("id").String()
-	// 	if c.OnSelect != nil {
-	// 		c.OnSelect()
-	// 	}
-	// }))
+	js.Global().Call("$", "#jstree").Call("on", "activate_node.jstree", js.NewCallback(func(args []js.Value) {
+		c.selectedID = args[1].Get("node").Get("id").String()
+		if c.OnSelect != nil {
+			n := c.root.FindID(c.selectedID)
+			c.OnSelect(n)
+		}
+	}))
 	c.Refresh()
 	c.mounted = true
 }

@@ -1,89 +1,61 @@
 package manifold
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 )
 
 type Node struct {
-	Components
+	ComponentSet
+
 	parent   *Node
-	children []*Node
-	active   bool
-	name     string
-	id       string
-}
-
-func Marshal(n *Node) ([]byte, error) {
-	return json.Marshal(n.export())
-}
-
-func Unmarshal(b []byte) (*Node, error) {
-	var node map[string]interface{}
-	err := json.Unmarshal(b, &node)
-	node["id"] = "#"
-	return load(node), err
-}
-
-func load(data map[string]interface{}) *Node {
-	n := &Node{
-		id:     data["id"].(string),
-		name:   data["name"].(string),
-		active: data["active"].(bool),
-	}
-	if data["children"] == nil {
-		return n
-	}
-	for _, child := range data["children"].([]interface{}) {
-		c := load(child.(map[string]interface{}))
-		c.parent = n
-		n.children = append(n.children, c)
-	}
-	return n
+	Children []*Node
+	Active   bool
+	Name     string
+	ID       string
 }
 
 func NewNode(name string) *Node {
 	return &Node{
-		name:   name,
-		active: true,
-		id:     fmt.Sprintf("n%d", time.Now().Unix()), // TODO: replace me
+		Name:   name,
+		Active: true,
+		ID:     fmt.Sprintf("n%d", time.Now().Unix()), // TODO: replace me
 	}
 }
 
-func (n *Node) export() map[string]interface{} {
-	var nodes []interface{}
-	for _, c := range n.children {
-		nodes = append(nodes, c.export())
-	}
-	return map[string]interface{}{
-		"id":         n.id,
-		"name":       n.name,
-		"active":     n.active,
-		"children":   nodes,
-		"components": n.Components.components,
-	}
-}
+// func (n *Node) export() map[string]interface{} {
+// 	var nodes []interface{}
+// 	for _, c := range n.children {
+// 		nodes = append(nodes, c.export())
+// 	}
+// 	return map[string]interface{}{
+// 		"id":         n.id,
+// 		"name":       n.name,
+// 		"active":     n.active,
+// 		"children":   nodes,
+// 		"components": n.Components.components,
+// 	}
+// }
 
 func (n *Node) TreeNode() map[string]interface{} {
 	var nodes []interface{}
-	for _, c := range n.children {
+	for _, c := range n.Children {
 		nodes = append(nodes, c.TreeNode())
 	}
 	return map[string]interface{}{
-		"id":       n.id,
-		"text":     n.name,
+		"id":       n.ID,
+		"text":     n.Name,
 		"children": nodes,
 	}
 }
 
 func (n *Node) Find(name string) *Node {
-	for _, child := range n.children {
-		if child.name == name {
+	for _, child := range n.Children {
+		if child.Name == name {
 			return child
 		}
 	}
-	for _, child := range n.children {
+	for _, child := range n.Children {
 		if res := child.Find(name); res != nil {
 			return res
 		}
@@ -92,15 +64,15 @@ func (n *Node) Find(name string) *Node {
 }
 
 func (n *Node) FindID(id string) *Node {
-	if n.id == id {
+	if n.ID == id {
 		return n
 	}
-	for _, child := range n.children {
-		if child.id == id {
+	for _, child := range n.Children {
+		if child.ID == id {
 			return child
 		}
 	}
-	for _, child := range n.children {
+	for _, child := range n.Children {
 		if res := child.FindID(id); res != nil {
 			return res
 		}
@@ -109,14 +81,14 @@ func (n *Node) FindID(id string) *Node {
 }
 
 func (n *Node) RemoveAt(idx int) *Node {
-	node := n.children[idx]
-	n.children = append(n.children[:idx], n.children[idx+1:]...)
+	node := n.Children[idx]
+	n.Children = append(n.Children[:idx], n.Children[idx+1:]...)
 	return node
 }
 
 func (n *Node) Remove(id string) *Node {
-	for idx, child := range n.children {
-		if child.id == id {
+	for idx, child := range n.Children {
+		if child.ID == id {
 			return n.RemoveAt(idx)
 		}
 	}
@@ -125,32 +97,12 @@ func (n *Node) Remove(id string) *Node {
 
 func (n *Node) Insert(idx int, node *Node) {
 	node.parent = n
-	n.children = append(n.children[:idx], append([]*Node{node}, n.children[idx:]...)...)
+	n.Children = append(n.Children[:idx], append([]*Node{node}, n.Children[idx:]...)...)
 }
 
 func (n *Node) Append(node *Node) {
 	node.parent = n
-	n.children = append(n.children, node)
-}
-
-func (n *Node) SetActive(active bool) {
-	n.active = active
-}
-
-func (n *Node) Active() bool {
-	return n.active
-}
-
-func (n *Node) Name() string {
-	return n.name
-}
-
-func (n *Node) SetName(name string) {
-	n.name = name
-}
-
-func (n *Node) Children() []*Node {
-	return n.children
+	n.Children = append(n.Children, node)
 }
 
 func (n *Node) Save() error {
