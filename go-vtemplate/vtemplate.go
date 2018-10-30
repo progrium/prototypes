@@ -34,7 +34,7 @@ type Binding struct {
 	Name       string
 	Argument   string
 	Expression string
-	IterVar    string
+	IterVar    []string
 	Value      reflected.Value
 	Node       *Node
 	Parser     *Parser
@@ -170,11 +170,11 @@ func (p *Parser) applyDirectives(n *Node, data reflected.Value) error {
 				continue
 			}
 			parts = strings.Split(exp, " in ")
-			var iterVar string
+			var iterVar []string
 			if len(parts) < 2 {
 				exp = parts[0]
 			} else {
-				iterVar = parts[0]
+				iterVar = strings.Split(strings.Trim(parts[0], "()"), ", ") // TODO: proper trim
 				exp = parts[1]
 			}
 			val, err := p.eval(exp, data)

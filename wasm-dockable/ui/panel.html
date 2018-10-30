@@ -1,0 +1,5 @@
+<div className="panel" v-bind:style="Style">
+    <PanelGroup v-for="(idx, window) in Windows" Direction="column" v-bind:PanelWidths="PanelWidths" v-bind:Spacing="Spacing">
+        <Window v-bind:Key="idx" v-bind:Window="window" v-bind:Expanded="Expanded"></Window>
+    </PanelGroup>
+</div>

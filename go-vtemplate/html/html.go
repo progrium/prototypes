@@ -45,18 +45,23 @@ func (d BindDirective) Apply(b vtemplate.Binding) error {
 type ForDirective struct{}
 
 func (d ForDirective) Apply(b vtemplate.Binding) error {
-	if b.IterVar == "" {
+	if b.IterVar == nil {
 		return fmt.Errorf("v-for: invalid expression")
 	}
 	// create reflected map and copy data into it.
 	// this lets us add values to it
 	mv := reflected.ValueOf(map[string]interface{}{})
-	for _, key := range b.Node.Data.Keys() {
+	for _, key := range b.Node.Data.Members() {
 		mv.Set(key, b.Node.Data.Get(key).Interface())
 	}
 	b.Node.Children = nil
-	for _, v := range b.Value.Iter() {
-		mv.Set(b.IterVar, v.Interface())
+	for idx, v := range b.Value.Iter() {
+		if len(b.IterVar) < 2 {
+			mv.Set(b.IterVar[0], v.Interface())
+		} else {
+			mv.Set(b.IterVar[0], idx)
+			mv.Set(b.IterVar[1], v.Interface())
+		}
 		for c := b.Node.Html.FirstChild; c != nil; c = c.NextSibling {
 			cn, err := b.Parser.ParseNode(c, mv)
 			if err != nil {

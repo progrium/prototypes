@@ -1,0 +1,15 @@
+<div className="window" v-bind:style="WindowStyle">
+
+    <div className="titlebar" v-bind:style="TitlebarStyle">
+        <fragment v-for="(i, tab) in Tabs">
+            <WindowTab v-bind:OnClick="HandleTabSelect" v-bind:KeyIndex="i" v-bind:Index="i" v-bind:Selected="i === Selected ? true : false" v-bind:Title="tab.Title"></WindowTab>
+        </fragment>
+        <div key="99" style="flexGrow: 1;"></div>
+        <div key="100" v-bind:style="CloseboxStyle"></div>
+    </div>
+ 
+    <div className="content" v-bind:style="ContentStyle">
+        <slot></slot>
+    </div>
+         
+</div>

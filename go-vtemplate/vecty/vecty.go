@@ -1,6 +1,9 @@
 package vecty
 
 import (
+	"reflect"
+	"strconv"
+
 	"github.com/gowasm/vecty"
 	reflected "github.com/progrium/prototypes/go-reflected"
 	vtemplate "github.com/progrium/prototypes/go-vtemplate"
@@ -52,7 +55,15 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 					for _, prop := range comType.Fields() {
 						// TODO: only set for fields tagged as prop
 						if k == prop {
-							com.Set(prop, v)
+							if comType.FieldType(prop).Kind() == reflect.Int {
+								i, err := strconv.Atoi(v.(string))
+								if err != nil {
+									panic(err)
+								}
+								com.Set(prop, i)
+							} else {
+								com.Set(prop, v)
+							}
 						}
 					}
 				}
@@ -103,10 +114,14 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 			case *vecty.EventListener:
 				applyers = append(applyers, tval)
 			default:
-				applyers = append(applyers, vecty.Attribute(key, val))
+				if key == "key" {
+					applyers = append(applyers, vecty.Key(val))
+				} else {
+					applyers = append(applyers, vecty.Attribute(key, val))
+				}
 			}
 		}
-		children := []vecty.MarkupOrChild{vecty.Markup(applyers...)}
+		var children []vecty.ComponentOrHTML
 		for _, child := range n.Children {
 			res := Render(child, v, c)
 			switch r := res.(type) {
@@ -118,7 +133,14 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 				children = append(children, res)
 			}
 		}
-		el := vecty.Tag(n.Name, children...)
+		if n.Name == "fragment" {
+			return vecty.List(children)
+		}
+		markupAndChildren := []vecty.MarkupOrChild{vecty.Markup(applyers...)}
+		for _, child := range children {
+			markupAndChildren = append(markupAndChildren, child)
+		}
+		el := vecty.Tag(n.Name, markupAndChildren...)
 		if refName != "" {
 			rv := reflected.ValueOf(v)
 			refFields := rv.Type().FieldsTagged("vecty", "ref")

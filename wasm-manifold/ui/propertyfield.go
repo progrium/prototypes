@@ -12,8 +12,8 @@ func init() {
 type PropertyField struct {
 	vecty.Core
 
-	Name  string
-	Value string
+	Name  string `vecty:"prop"`
+	Value string `vecty:"prop"`
 }
 
 func (c *PropertyField) Render() vecty.ComponentOrHTML {

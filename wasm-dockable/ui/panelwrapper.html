@@ -1,0 +1,8 @@
+<div ref="Element" className="panelWrapper" v-bind:style="Style">
+    <object
+        v-if="Resize === 'stretch'"
+        v-bind:style="ResizeStyle"
+        ref="ResizeObj"
+        type="text/html"></object>
+    <slot></slot>
+</div>

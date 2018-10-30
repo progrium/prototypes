@@ -26,6 +26,11 @@ func (t Type) Fields() []string {
 	return f
 }
 
+func (t Type) FieldType(f string) Type {
+	field, _ := t.FieldByName(f)
+	return Type{field.Type}
+}
+
 // Methods returns method names for Type t and reflect.PtrTo(t).
 func (t Type) Methods() []string {
 	var methods []string

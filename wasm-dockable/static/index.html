@@ -1,0 +1,40 @@
+<html>
+    <head>
+    <link rel="stylesheet" href="index.css" />
+	<script src="wasm.js"></script>
+	<script>
+		if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
+		const go = new Go();
+		let mod, inst;
+
+		function reload() {
+			WebAssembly.instantiateStreaming(fetch("app.wasm"), go.importObject).then(async (result) => {
+				mod = result.module;
+				inst = result.instance;
+				//console.clear();
+				await go.run(inst);
+				inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+			});
+			var ws = new WebSocket("ws://localhost:8080/reload");
+			ws.onopen = () => {
+				console.log("Reloader ready...");
+
+			}
+			ws.onmessage = () => {
+				ws.close();
+				reload();
+			}
+		}
+		reload()
+	</script>
+</head>
+
+<body></body>
+
+</html>
