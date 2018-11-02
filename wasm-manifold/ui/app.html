@@ -7,7 +7,13 @@
     </div>
 
     <div style="width: 400px; float: left;">
-      <Inspector ref="Inspector"></Inspector>
+      <style>
+        .fields {
+          display: grid;
+          grid-template-columns: 1fr 2fr;
+        }
+      </style>
+      <Inspector ref="Inspector" v-bind:OnNodeChange="NodeChanged" v-bind:OnChange="InspectorChanged"></Inspector>
     </div>
 
 

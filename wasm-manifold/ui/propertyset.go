@@ -10,18 +10,38 @@ func init() {
 	webui.Register(PropertySet{})
 }
 
+type fieldView struct {
+	Name  string
+	Value reflected.Value
+}
+
 type PropertySet struct {
 	vecty.Core
 
-	Value interface{} `vecty:"prop"`
+	Value    interface{} `vecty:"prop"`
+	OnChange func()      `vecty:"prop"`
 
+	Object reflected.Value
 	Name   string
-	Fields []string
+	Fields []fieldView
 }
 
 func (c *PropertySet) Render() vecty.ComponentOrHTML {
-	rf := reflected.ValueOf(c.Value)
-	c.Name = rf.Type().Name()
-	c.Fields = rf.Type().Fields()
+	c.Object = reflected.ValueOf(c.Value)
+	c.Name = c.Object.Type().Name()
+	c.Fields = nil
+	hidden := c.Object.Type().FieldsTagged("inspector", "hide")
+	for _, field := range c.Object.Type().Fields() {
+		for _, n := range hidden {
+			if n == field {
+				goto skip
+			}
+		}
+		c.Fields = append(c.Fields, fieldView{
+			Name:  field,
+			Value: c.Object.Get(field),
+		})
+	skip:
+	}
 	return webui.Render(c)
 }

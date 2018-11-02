@@ -1,9 +1,14 @@
 <div>
-    <div class="active title">
+    <div>
         <i class="dropdown icon"></i>
         {{ Name }}
     </div>
-    <div class="active content ui form" v-for="Field in Fields">
-        <PropertyField v-bind:Name="Field"></PropertyField>
+    <div class="fields" v-for="Field in Fields">
+        <div>
+            <label style="font-size: medium;">{{ Field.Name }}</label>
+        </div>
+        <div>
+            <PropertyInput v-bind:OnChange="OnChange" v-bind:Object="Object" v-bind:Field="Field.Name" v-bind:Value="Field.Value"></PropertyInput> 
+        </div>
     </div>
-</div>
+</div> 

@@ -37,6 +37,15 @@ func (c *App) OnSelect(n *manifold.Node) {
 	vecty.Rerender(c.Inspector)
 }
 
+func (c *App) InspectorChanged() {
+	c.TreeView.Save()
+}
+
+func (c *App) NodeChanged() {
+	vecty.Rerender(c.TreeView)
+	c.TreeView.Save()
+}
+
 func (c *App) Mount() {
 
 }

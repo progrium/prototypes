@@ -1,13 +1,10 @@
 <div>
     <div v-if="Node">
-        <div class="ui styled accordion">
-            <PropertySet v-bind:Value="Node"></PropertySet>
+        <div class="ui segment">
+            <PropertySet v-bind:OnChange="OnNodeChange" v-bind:Value="Node"></PropertySet>
             <div v-for="Component in Node.Components">
-                    <PropertySet v-bind:Value="Component.Ref"></PropertySet> 
+                    <PropertySet v-bind:OnChange="OnChange" v-bind:Value="Component.Ref"></PropertySet> 
             </div> 
-        </div> 
-        <script>
-            $('.ui.accordion').accordion({exclusive: false})
-        </script>
+        </div>
     </div>
 </div>

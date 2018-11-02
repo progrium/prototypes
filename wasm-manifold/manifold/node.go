@@ -6,13 +6,13 @@ import (
 )
 
 type Node struct {
-	ComponentSet
+	ComponentSet `inspector:"hide"`
 
 	parent   *Node
-	Children []*Node
+	Children []*Node `inspector:"hide"`
 	Active   bool
 	Name     string
-	ID       string
+	ID       string `inspector:"hide"`
 }
 
 func NewNode(name string) *Node {
@@ -42,11 +42,17 @@ func (n *Node) TreeNode() map[string]interface{} {
 	for _, c := range n.Children {
 		nodes = append(nodes, c.TreeNode())
 	}
-	return map[string]interface{}{
+	node := map[string]interface{}{
 		"id":       n.ID,
 		"text":     n.Name,
 		"children": nodes,
 	}
+	if !n.Active {
+		node["li_attr"] = map[string]interface{}{
+			"class": "jstree-disabled",
+		}
+	}
+	return node
 }
 
 func (n *Node) Find(name string) *Node {

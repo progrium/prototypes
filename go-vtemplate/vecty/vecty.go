@@ -39,57 +39,83 @@ func (d OnDirective) Apply(b vtemplate.Binding) error {
 	return nil
 }
 
+func renderComponent(com reflected.Value, n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOrHTML {
+	refName := ""
+	for k, attr := range n.Attrs {
+		if k == "ref" {
+			refName = attr.(string)
+			continue
+		}
+		for _, prop := range com.Type().Fields() {
+			// TODO: only set for fields tagged as prop
+			if k == prop {
+				if com.Type().FieldType(prop).Kind() == reflect.Int {
+					i, err := strconv.Atoi(attr.(string))
+					if err != nil {
+						panic(err)
+					}
+					com.Set(prop, i)
+				} else {
+					com.Set(prop, attr)
+				}
+			}
+		}
+	}
+	if len(n.Children) > 0 {
+		slotFields := com.Type().FieldsTagged("vecty", "slot")
+		if len(slotFields) > 0 {
+			// TODO: named slots
+			var slot []vecty.ComponentOrHTML
+			for _, child := range n.Children {
+				slot = append(slot, Render(child, v, c))
+			}
+			com.Set(slotFields[0], vecty.List(slot))
+		}
+	}
+	ch := com.Interface()
+	if refName != "" {
+		rv := reflected.ValueOf(v)
+		refFields := rv.Type().FieldsTagged("vecty", "ref")
+		for _, f := range refFields {
+			if f == refName {
+				rv.Set(refName, ch)
+				break
+			}
+		}
+	}
+	return ch.(vecty.ComponentOrHTML)
+}
+
+func parseAttrs(attrs map[string]interface{}) (string, []vecty.Applyer) {
+	refName := ""
+	var applyers []vecty.Applyer
+	for key, val := range attrs {
+		if key == "ref" {
+			refName = val.(string)
+			continue
+		}
+		switch tval := val.(type) {
+		case *vecty.EventListener:
+			applyers = append(applyers, tval)
+		default:
+			if key == "key" {
+				applyers = append(applyers, vecty.Key(val))
+			} else {
+				applyers = append(applyers, vecty.Attribute(key, val))
+			}
+		}
+	}
+	return refName, applyers
+}
+
 func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOrHTML {
 	switch n.Type {
 	case vtemplate.CustomNode:
 		for _, proto := range c {
 			comType := reflected.ValueOf(proto).Type()
 			if comType.Name() == n.Name {
-				refName := ""
 				com := reflected.New(comType)
-				for k, v := range n.Attrs {
-					if k == "ref" {
-						refName = v.(string)
-						continue
-					}
-					for _, prop := range comType.Fields() {
-						// TODO: only set for fields tagged as prop
-						if k == prop {
-							if comType.FieldType(prop).Kind() == reflect.Int {
-								i, err := strconv.Atoi(v.(string))
-								if err != nil {
-									panic(err)
-								}
-								com.Set(prop, i)
-							} else {
-								com.Set(prop, v)
-							}
-						}
-					}
-				}
-				if len(n.Children) > 0 {
-					slotFields := comType.FieldsTagged("vecty", "slot")
-					if len(slotFields) > 0 {
-						// TODO: named slots
-						var slot []vecty.ComponentOrHTML
-						for _, child := range n.Children {
-							slot = append(slot, Render(child, v, c))
-						}
-						com.Set(slotFields[0], vecty.List(slot))
-					}
-				}
-				ch := com.Interface()
-				if refName != "" {
-					rv := reflected.ValueOf(v)
-					refFields := rv.Type().FieldsTagged("vecty", "ref")
-					for _, f := range refFields {
-						if f == refName {
-							rv.Set(refName, ch)
-							break
-						}
-					}
-				}
-				return ch.(vecty.ComponentOrHTML)
+				return renderComponent(com, n, v, c)
 			}
 		}
 		// no component found
@@ -103,24 +129,21 @@ func Render(n *vtemplate.Node, v interface{}, c []interface{}) vecty.ComponentOr
 			}
 			return vecty.Text("")
 		}
-		refName := ""
-		var applyers []vecty.Applyer
-		for key, val := range n.Attrs {
-			if key == "ref" {
-				refName = val.(string)
-				continue
-			}
-			switch tval := val.(type) {
-			case *vecty.EventListener:
-				applyers = append(applyers, tval)
-			default:
-				if key == "key" {
-					applyers = append(applyers, vecty.Key(val))
-				} else {
-					applyers = append(applyers, vecty.Attribute(key, val))
+		if n.Name == "node" {
+			switch is := n.Attrs["is"].(type) {
+			case *vecty.HTML:
+				delete(n.Attrs, "is")
+				_, applyers := parseAttrs(n.Attrs)
+				for _, applyer := range applyers {
+					applyer.Apply(is)
 				}
+				return is
+			default:
+				delete(n.Attrs, "is")
+				return renderComponent(reflected.ValueOf(is), n, v, c)
 			}
 		}
+		refName, applyers := parseAttrs(n.Attrs)
 		var children []vecty.ComponentOrHTML
 		for _, child := range n.Children {
 			res := Render(child, v, c)
