@@ -13,9 +13,10 @@ func init() {
 type Inspector struct {
 	vecty.Core
 
-	Node         *manifold.Node `vecty:"prop"`
-	OnChange     func()         `vecty:"prop"`
-	OnNodeChange func()         `vecty:"prop"`
+	Root         func() *manifold.Node `vecty:"prop"`
+	Node         *manifold.Node        `vecty:"prop"`
+	OnChange     func()                `vecty:"prop"`
+	OnNodeChange func()                `vecty:"prop"`
 }
 
 func (c *Inspector) Render() vecty.ComponentOrHTML {

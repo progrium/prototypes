@@ -13,12 +13,24 @@
           grid-template-columns: 1fr 2fr;
         }
       </style>
-      <Inspector ref="Inspector" v-bind:OnNodeChange="NodeChanged" v-bind:OnChange="InspectorChanged"></Inspector>
+      <Inspector ref="Inspector" v-bind:Root="Root" v-bind:OnNodeChange="NodeChanged" v-bind:OnChange="InspectorChanged"></Inspector>
     </div>
 
 
-
     <script>
+    function isDraggable(nodes, event) {
+      event.originalEvent.dataTransfer.effectAllowed = 'linkMove';
+      event.originalEvent.dataTransfer.setData("text/plain", nodes[0].id);
+      return true;
+    }
+    function dragOver(event) {
+      event.dataTransfer.dropEffect = "link";
+      event.preventDefault(); 
+    }
+    function dragDrop(event) {
+      event.target.dataset.id = event.dataTransfer.getData("text/plain");
+      event.target.dispatchEvent(new Event("change"));
+    }
     var components = []
     function contextMenu(node) {
       var jstree = $("#jstree").jstree(true)

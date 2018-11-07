@@ -10,4 +10,6 @@ type DemoComponent struct {
 	StringValue string
 	IntValue    int
 	BoolValue   bool
+	FloatValue  float64
+	MyNode      *manifold.Node
 }

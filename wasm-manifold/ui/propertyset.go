@@ -4,6 +4,7 @@ import (
 	"github.com/gowasm/vecty"
 	reflected "github.com/progrium/prototypes/go-reflected"
 	"github.com/progrium/prototypes/go-webui"
+	"github.com/progrium/prototypes/wasm-manifold/manifold"
 )
 
 func init() {
@@ -18,8 +19,9 @@ type fieldView struct {
 type PropertySet struct {
 	vecty.Core
 
-	Value    interface{} `vecty:"prop"`
-	OnChange func()      `vecty:"prop"`
+	Root     func() *manifold.Node `vecty:"prop"`
+	Value    interface{}           `vecty:"prop"`
+	OnChange func()                `vecty:"prop"`
 
 	Object reflected.Value
 	Name   string

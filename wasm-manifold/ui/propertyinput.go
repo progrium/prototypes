@@ -10,6 +10,7 @@ import (
 	"github.com/gowasm/vecty/prop"
 	reflected "github.com/progrium/prototypes/go-reflected"
 	"github.com/progrium/prototypes/go-webui"
+	"github.com/progrium/prototypes/wasm-manifold/manifold"
 )
 
 func init() {
@@ -19,10 +20,13 @@ func init() {
 type PropertyInput struct {
 	vecty.Core
 
-	Value    reflected.Value `vecty:"prop"`
-	Field    string          `vecty:"prop"`
-	Object   reflected.Value `vecty:"prop"`
-	OnChange func()          `vecty:"prop"`
+	Root     func() *manifold.Node `vecty:"prop"`
+	Value    reflected.Value       `vecty:"prop"`
+	Field    string                `vecty:"prop"`
+	Object   reflected.Value       `vecty:"prop"`
+	OnChange func()                `vecty:"prop"`
+
+	refId string
 }
 
 func (c *PropertyInput) Render() vecty.ComponentOrHTML {
@@ -57,6 +61,30 @@ func (c *PropertyInput) Render() vecty.ComponentOrHTML {
 				c.Object.Set(c.Field, e.Target.Get("valueAsNumber").Float())
 				if c.OnChange != nil {
 					c.OnChange()
+				}
+			}),
+		))
+	case reflect.Ptr:
+		name := ""
+		if !c.Object.Get(c.Field).IsNil() {
+			name = c.Object.Get(c.Field).Get("Name").String()
+		}
+		return elem.Input(vecty.Markup(
+			prop.Type(prop.TypeText),
+			vecty.Attribute("readonly", "readonly"),
+			vecty.Style("border", "1px solid lightgray"),
+			vecty.Attribute("ondragover", "dragOver(event)"),
+			vecty.Attribute("ondrop", "dragDrop(event)"),
+			vecty.Attribute("value", name),
+			event.Change(func(e *vecty.Event) {
+				id := e.Target.Get("dataset").Get("id").String()
+				node := c.Root().FindID(id)
+				if node != nil {
+					c.Object.Set(c.Field, node)
+					if c.OnChange != nil {
+						c.OnChange()
+					}
+					vecty.Rerender(c)
 				}
 			}),
 		))

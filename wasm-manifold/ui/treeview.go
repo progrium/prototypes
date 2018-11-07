@@ -25,6 +25,10 @@ type TreeView struct {
 	mounted    bool
 }
 
+func (c *TreeView) Root() *manifold.Node {
+	return c.root
+}
+
 func (c *TreeView) CreateNode(node *manifold.Node) {
 	c.root.Append(node)
 	vecty.Rerender(c)
@@ -86,6 +90,10 @@ func (c *TreeView) Mount() {
 		},
 		"contextmenu": map[string]interface{}{
 			"items": js.Global().Get("contextMenu"),
+		},
+		"dnd": map[string]interface{}{
+			"use_html5":    true,
+			"is_draggable": js.Global().Get("isDraggable"),
 		},
 	})
 	js.Global().Set("addComponent", js.NewCallback(func(args []js.Value) {

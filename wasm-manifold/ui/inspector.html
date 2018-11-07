@@ -3,7 +3,7 @@
         <div class="ui segment">
             <PropertySet v-bind:OnChange="OnNodeChange" v-bind:Value="Node"></PropertySet>
             <div v-for="Component in Node.Components">
-                    <PropertySet v-bind:OnChange="OnChange" v-bind:Value="Component.Ref"></PropertySet> 
+                    <PropertySet v-bind:Root="Root" v-bind:OnChange="OnChange" v-bind:Value="Component.Ref"></PropertySet> 
             </div> 
         </div>
     </div>

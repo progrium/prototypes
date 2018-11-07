@@ -19,6 +19,10 @@ type App struct {
 	Inspector *Inspector `vecty:"ref"`
 }
 
+func (c *App) Root() *manifold.Node {
+	return c.TreeView.Root()
+}
+
 func (c *App) OnReset(e *vecty.Event) {
 	js.Global().Get("localStorage").Call("setItem", "tree_nodes", "{}")
 	js.Global().Get("location").Call("reload")
