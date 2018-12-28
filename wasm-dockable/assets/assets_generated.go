@@ -33,7 +33,7 @@ var Assets = func() http.FileSystem {
 		},
 		"/static": &vfsgen۰DirInfo{
 			name:    "static",
-			modTime: time.Date(2018, 10, 30, 12, 26, 18, 311206820, time.UTC),
+			modTime: time.Date(2018, 10, 30, 12, 26, 19, 990465382, time.UTC),
 		},
 		"/static/icons": &vfsgen۰DirInfo{
 			name:    "icons",

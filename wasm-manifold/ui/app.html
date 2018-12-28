@@ -1,4 +1,11 @@
 <body>
+    <style>
+        .fields {
+          display: grid;
+          grid-template-columns: 1fr 2fr;
+        }
+    </style>
+
     <div style="width: 400px; float: left;">
         <Button v-bind:OnClick="OnAdd">Add</Button>
         <Button v-bind:OnClick="OnReset">Reset</Button>
@@ -7,12 +14,6 @@
     </div>
 
     <div style="width: 400px; float: left;">
-      <style>
-        .fields {
-          display: grid;
-          grid-template-columns: 1fr 2fr;
-        }
-      </style>
       <Inspector ref="Inspector" v-bind:Root="Root" v-bind:OnNodeChange="NodeChanged" v-bind:OnChange="InspectorChanged"></Inspector>
     </div>
 

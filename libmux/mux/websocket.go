@@ -16,6 +16,7 @@ func DialWebsocket(addr string) (Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	ws.PayloadType = websocket.BinaryFrame
 	return &qmuxSession{
 		Session: qmux.NewSession(ws),
 		ctx:     context.Background(),
@@ -31,6 +32,7 @@ func ListenWebsocket(addr string) (Listener, error) {
 	s := &http.Server{
 		Addr: addr,
 		Handler: websocket.Handler(func(ws *websocket.Conn) {
+			ws.PayloadType = websocket.BinaryFrame
 			sess := qmux.NewSession(ws)
 			sessCh <- sess
 			sess.Wait()

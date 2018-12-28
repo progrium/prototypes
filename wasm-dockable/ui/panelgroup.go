@@ -188,10 +188,31 @@ func (c *PanelGroup) resizePanel(idx int, delta int, panels []panelDef) int {
 
 	if maxSize != 0 && panels[idx].Size > maxSize {
 		delta = panels[idx].Size - maxSize
-		if idx+1 == len(panels)-1 {
+		if idx == 0 {
 			result = c.resizePanel(idx, -delta, panels)
 		} else {
 			result = c.resizePanel(idx-1, delta, panels)
+		}
+	}
+
+	minSize = c.panelMinSize(idx+1, panels)
+	maxSize = c.panelMaxSize(idx+1, panels)
+
+	if panels[idx+1].Size < minSize {
+		delta = minSize - panels[idx+1].Size
+		if idx+1 == len(panels)-1 {
+			result = c.resizePanel(idx, -delta, panels)
+		} else {
+			result = c.resizePanel(idx+1, delta, panels)
+		}
+	}
+
+	if maxSize != 0 && panels[idx+1].Size > maxSize {
+		delta = panels[idx+1].Size - maxSize
+		if idx+1 == len(panels)-1 {
+			result = c.resizePanel(idx, delta, panels)
+		} else {
+			result = c.resizePanel(idx+1, -delta, panels)
 		}
 	}
 

@@ -1,6 +1,5 @@
-var qmux = require("../../qmux/node/qmux.js");
-var tcp = require("../../qmux/node/tcp.js");
-var qrpc = require("./qrpc.js");
+var qmux = require("../../qmux/node/dist/qmux_node.js");
+var qrpc = require("./dist/qrpc.js");
 
 var session = null;
 var listener = null;
@@ -13,7 +12,7 @@ var listener = null;
         }
     }));
 
-    listener = await tcp.ListenTCP(4242);
+    listener = await qmux.ListenWebsocket(4242);
     var server = new qrpc.Server();
     await server.serve(listener, api);
 })().catch(async (err) => { 
@@ -23,7 +22,7 @@ var listener = null;
 
 (async () => {
     console.log("dialing...")
-    var conn = await tcp.DialTCP(4242);
+    var conn = await qmux.DialWebsocket("ws://localhost:4242");
     conn.client = true;
     session = new qmux.Session(conn);
     console.log("connected...")

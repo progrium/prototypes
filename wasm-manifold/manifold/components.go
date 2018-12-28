@@ -76,18 +76,18 @@ type ComponentSet struct {
 	registry   *objects.Registry
 }
 
-func (c *ComponentSet) RemoveAt(idx int) interface{} {
+func (c *ComponentSet) RemoveComponent(idx int) interface{} {
 	v := c.Components[idx]
 	c.Components = append(c.Components[:idx], c.Components[idx+1:]...)
 	return v.Ref
 }
 
-func (c *ComponentSet) Insert(idx int, v interface{}) {
+func (c *ComponentSet) InsertComponent(idx int, v interface{}) {
 	com := componentFromValue(v)
 	c.Components = append(c.Components[:idx], append([]Component{com}, c.Components[idx:]...)...)
 }
 
-func (c *ComponentSet) Append(v interface{}) {
+func (c *ComponentSet) AppendComponent(v interface{}) {
 	com := componentFromValue(v)
 	c.Components = append(c.Components, com)
 }
