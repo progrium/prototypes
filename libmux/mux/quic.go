@@ -21,7 +21,7 @@ type quicSession struct {
 }
 
 func (s *quicSession) Close() error {
-	return s.Session.Close(nil)
+	return s.Session.Close()
 }
 
 func (s *quicSession) Open() (Channel, error) {
