@@ -4,11 +4,14 @@
   "private": true,
   "dependencies": {
     "antd": "^3.11.6",
+    "chai": "^4.2.0",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "react-monaco-editor": "^0.22.0",
     "react-panelgroup": "^1.0.7",
     "react-scripts": "2.1.2",
+    "react-splitter-layout": "^3.0.1",
+    "react-xterm": "^2.0.4",
     "underscore": "^1.9.1"
   },
   "scripts": {

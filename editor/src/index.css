@@ -12,3 +12,34 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
+
+.splitter-layout-vertical .layout-pane {
+  height: 100%;
+}
+
+.ant-tabs-bar {
+  margin-bottom: 0px !important;
+}
+
+.ant-tabs-content {
+  height: 100%;
+}
+
+.ant-tabs {
+  height: 100%;
+}
+
+.ant-collapse.embedded .ant-collapse-header {
+  padding: 0px !important;
+  font-size: smaller;
+}
+
+.ant-collapse.embedded .anticon {
+  font-size: 8px !important;
+  left: 0px !important;
+  margin-left: -10px;
+}
+
+.ant-collapse.embedded .ant-collapse-item {
+  border-bottom: 0px;
+}
