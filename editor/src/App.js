@@ -19,7 +19,137 @@ const TreeSelectNode = TreeSelect.TreeNode;
 const qmux = window.qmux;
 const qrpc = window.qrpc;
 
+function FieldInput(props) {
+  var onChange = () => {}
+  switch (props.type) {
+    case "boolean":
+      return <Checkbox checked={props.value} />;
+    case "string":
+      return <Input size="small" style={{color:"white", backgroundColor: "#555", fontFamily:"monospace"}} onChange={onChange} value={props.value} />;
+    case "number":
+      return <InputNumber style={{width: "100%"}} size="small" value={props.value} />;
+    case "reference":
+      return <TreeSelect
+        size="small"
+        showSearch
+        style={{ width: "100%"}}
+        dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+        placeholder="Please select"
+        value="/server/server.go"
+        allowClear
+        treeDefaultExpandAll
+      >
+        {refTree}
+      </TreeSelect>;
+    default:
+      return "???";
+  }
+}
 
+function LabeledField(props) {
+  const onClick = () => {
+    console.log("Click");
+  }
+  return (<Row>
+      <Col span={9} style={{fontSize: "smaller", height: "25px", marginTop: "2px"}}>
+        <span onClick={onClick}>{props.label}</span>
+      </Col>
+      <Col span={15}>
+        {props.children}
+      </Col>
+    </Row>);
+}
+
+function KeyedField(props) {
+  var onChange = () => {}
+  return (<Row>
+    <Col span={9} style={{fontSize: "smaller", height: "25px"}}>
+    <Input size="small" onChange={onChange} value={props.name} />
+    </Col>
+    <Col span={15}>
+      {props.children}
+    </Col>
+  </Row>);
+}
+
+function PropField(props) {
+  switch (props.type) {
+    case "boolean":
+    case "string":
+    case "number":
+    case "reference":
+      return <LabeledField key={props.key} label={props.name}>{FieldInput(props)}</LabeledField>
+    case "struct":
+      return (
+        <EmbeddedFields key={props.key} label={props.name} fields={props.fields}>
+          {props.children}
+        </EmbeddedFields>
+      );
+    case "map":
+      return (
+        <MapFields key={props.key} label={props.name} fields={props.fields}>
+          {props.children}
+        </MapFields>
+      );
+    case "array":
+      return (
+        <ArrayFields key={props.key} label={props.name} fields={props.fields}>
+          {props.children}
+        </ArrayFields>
+      );
+    default:
+      return <LabeledField key={props.key} label={props.name}>{FieldInput(props)}</LabeledField>              
+  }
+}
+
+function EmbeddedFields(props) {
+  let fields = props.fields || []
+  return (
+    <Collapse className="embedded" bordered={false} defaultActiveKey="1">
+        <Panel header={props.label} key="1">
+          {fields.map(PropField)}
+          {props.children}
+        </Panel>
+    </Collapse>
+  );
+}
+
+function MapFields(props) {
+  let fields = props.fields || []
+  return (
+    <Collapse className="embedded" bordered={false} defaultActiveKey="1">
+        <Panel header={props.label} key="1">
+          {fields.map((field) => {
+            return <KeyedField name={field.name}>{FieldInput(field)}</KeyedField>
+          })}
+          {props.children}
+        </Panel>
+    </Collapse>
+  );
+}
+
+function ArrayFields(props) {
+  let fields = props.fields || []
+  return (
+    <Collapse className="embedded" bordered={false} defaultActiveKey="1">
+        <Panel header={props.label} key="1">
+          <PropField type="number" name="Count" value={fields.length} />
+          {fields.map((field, idx) => {
+            field.name = "Element "+idx;
+            return field
+          }).map(PropField)}
+          {props.children}
+        </Panel>
+    </Collapse>
+  );
+}
+
+function PropFields(props) {
+  return props.fields.map((el, idx) => {
+    el.key = idx;
+    return PropField(el);
+  });
+}
 
 
 
@@ -71,85 +201,6 @@ function arrangeIntoTree(paths) {
   return tree;
 }
 
-function LabeledField(props) {
-  return (<Row>
-      <Col span={10} style={{fontSize: "smaller"}}>{props.label}</Col>
-      <Col span={14}>
-        {props.children}
-      </Col>
-    </Row>);
-}
-
-function EmbeddedFields(props) {
-  return (
-    <Collapse className="embedded" bordered={false} defaultActiveKey="1">
-        <Panel header={props.label} key="1">
-          {props.children}
-        </Panel>
-    </Collapse>
-  );
-}
-
-function PropFields(props) {
-  return props.fields.map((el, idx) => {
-    el.key = idx;
-    return PropField(el);
-  });
-}
-
-const exampleFields = [
-  {type: "string", name: "StringField", value: "Foobar"},
-  {type: "number", name: "NumberField", value: 6},
-  {type: "boolean", name: "BoolField", value: true},
-  {type: "struct", name: "SomeObject", value: [
-    {type: "string", name: "StringField", value: "Foobar"},
-  ]},
-  {type: "array", name: "List", value: [
-    {type: "number", name: "NumberField", value: 6},
-    {type: "number", name: "NumberField", value: 6},
-  ]},
-]
-
-function PropField(props) {
-  var onChange = () => {
-
-  }
-  switch (props.type) {
-    case "boolean":
-      return <LabeledField key={props.key} label={props.name}><Checkbox checked={props.value} /></LabeledField>
-    case "string":
-      return <LabeledField key={props.key} label={props.name}><Input size="small" onChange={onChange} value={props.value} /></LabeledField>
-    case "number":
-      return <LabeledField key={props.key} label={props.name}><InputNumber size="small" value={props.value} /></LabeledField>
-    case "struct":
-      return (
-        <EmbeddedFields key={props.key} label={props.name}>
-          {props.children}
-        </EmbeddedFields>
-      );
-    case "pointer":
-      return (
-        <LabeledField label={props.name} key={props.key} >
-          <TreeSelect
-            size="small"
-            showSearch
-            style={{ width: "100%"}}
-            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-            placeholder="Please select"
-            value="/server/server.go"
-            allowClear
-            treeDefaultExpandAll
-          >
-            {props.children}
-          </TreeSelect>
-        </LabeledField>
-      );
-    default:
-      return <LabeledField key={props.key} label={props.name}><Input size="small" placeholder="small size" /></LabeledField>              
-  }
-
-}
-
 class MyTreeNode extends TreeNode {
   render() {
     var onClick = (item, key, keyPath) => {
@@ -173,6 +224,49 @@ function convertNodeToTree(node) {
 function convertNodeToSelectTree(node) {
   return <TreeSelectNode title={node.name} value={node.path} key={node.path}>{node.children.map((n) => { return convertNodeToSelectTree(n) })}</TreeSelectNode>
 }
+
+function Header(props) {
+  return <header id="header" className="clearfix">
+    <Row>
+      <Menu
+        mode="horizontal"
+        defaultSelectedKeys={['1']}
+        style={{lineHeight: '64px'}}
+      >
+        <Menu.Item style={{float: 'right'}} key="0"></Menu.Item>
+        <Menu.Item style={{float: 'right'}} key="1">progrium</Menu.Item>
+      </Menu>
+    </Row>
+  </header>
+}
+
+function Inspector(props) {
+  return <div>
+    <Row style={{padding: "5px"}}> 
+      <Col span={2}><Checkbox checked={props.active} /></Col>
+      <Col span={22}><Input size="small" value={props.name} /></Col>
+    </Row>
+    <Collapse bordered={false} defaultActiveKey={['1']}>
+      {props.components.map((com) => {
+        return <Panel header={com.name} key="1">
+          <PropFields fields={com.fields} />
+          <Button size="small" style={{marginTop: "10px", width: "100%"}}>
+            Test Button
+          </Button>
+        </Panel>
+      })}
+    </Collapse>
+    <div style={{margin: "20px"}}>
+      <Dropdown overlay={menu}>
+        <Button style={{width: "100%"}}>
+          Add Component <Icon type="down" />
+        </Button>
+      </Dropdown>
+    </div>
+  </div>
+}
+
+let refTree = null;
 
 class App extends Component {
   constructor(props) {
@@ -229,111 +323,77 @@ class App extends Component {
     };
     const fileTree = arrangeIntoTree(this.state.Files);
     const treeNodes = fileTree.map(convertNodeToTree);
-    const treeSelectNodes = fileTree.map(convertNodeToSelectTree);
+    refTree = fileTree.map(convertNodeToSelectTree);
+    const exampleComponents = [
+      {name: "foo.Component", fields: [
+        {type: "string", name: "StringField", value: "Foobar"},
+        {type: "number", name: "NumberField", value: 6},
+        {type: "boolean", name: "BoolField", value: true},
+        {type: "struct", name: "SomeObject", fields: [
+          {type: "string", name: "StringField", value: "Foobar"},
+        ]},
+        {type: "map", name: "MapValue", fields: [
+          {type: "string", name: "str2", value: "hello1"},
+          {type: "string", name: "str1", value: "hello2"},
+        ]},
+        {type: "array", name: "NumberList", fields: [
+          {type: "number", value: 6},
+          {type: "number", value: 6},
+        ]},
+      ]},
+      {name: "twilio.Client", fields: [
+        {type: "reference", name: "Ref", value: "/Foobar"},
+        {type: "number", name: "NumberField", value: 6},
+      ]}
+    ]
     const self = this;
     return (
       <div style={{height: "100%"}}>
-        <header id="header" className="clearfix">
-          <Row>
-            <Col span={24}>
-           
-            <Menu
-          
-          mode="horizontal"
-          defaultSelectedKeys={['1']}
-          style={{ lineHeight: '64px' }}
-        >
-          <Menu.Item style={{float: 'right'}} key="0"></Menu.Item>
-          <Menu.Item style={{float: 'right'}} key="1">progrium</Menu.Item>
-        </Menu>
-            </Col>
-          </Row>
-        
-          
-        </header>
+        <Header />
         <Layout style={{height: "100%"}}>
           <SplitterLayout customClassName="tree" primaryIndex={1} secondaryMinSize={150} secondaryInitialSize={200}>
-              
-                <DirectoryTree
-                  defaultExpandAll
-                  onSelect={this.onSelect.bind(this)}
-                >
-                  {treeNodes}
-                </DirectoryTree>
-               
+            <DirectoryTree
+              defaultExpandAll
+              onSelect={this.onSelect.bind(this)}
+            >
+              {treeNodes}
+            </DirectoryTree>
+            
+            <SplitterLayout customClassName="tree" primaryIndex={1} secondaryMinSize={250} secondaryInitialSize={250}>
+              <Inspector name="TestObject" active={true} components={exampleComponents} />
 
-                <SplitterLayout customClassName="tree" primaryIndex={1} secondaryMinSize={250} secondaryInitialSize={250}>
-                  <div>
-                    <Row style={{padding: "5px"}}>
-                      <Col span={2}><Icon type="code" /></Col>
-                      <Col span={2}><Checkbox /></Col>
-                      <Col span={20}><Input size="small" placeholder="small size" /></Col>
-                    </Row>
-                  
-                  
-                  <Collapse bordered={false} defaultActiveKey={['1']}>
-                    <Panel header="FooComponent" key="1">
-                      <PropField type="boolean" name="BoolField" value={true} />
-                      <PropField type="number" name="NumberField" value={5} />
-                      <PropField type="string" name="StringField" value="Hello" />
-                      <PropField type="struct" name="Somethinggg">
-                        <PropField type="string" name="StringField" />
-                      </PropField>
-                      <PropField type="pointer" name="Foobar">
-                        {treeSelectNodes}
-                      </PropField>
-                      
-                    </Panel>
-                    <Panel header="Foobar" key="2">
-                      <PropFields fields={exampleFields} />
-                    </Panel>
-                    <Panel header="TwilioProvider" key="3">
-                      Three
-                    </Panel>
-                  </Collapse>
-                  <Dropdown overlay={menu}>
-                    <Button style={{margin: "20px"}}>
-                      Add Component <Icon type="down" />
-                    </Button>
-                  </Dropdown>
-
-                  </div>
-
-                  <SplitterLayout vertical style={{"width": "100%"}}>
-                    <Tabs defaultActiveKey="1" size="small">
-                      <TabPane tab="Edit" key="1">
-                      <div style={{"height": "100%"}}>
-                    <MonacoEditor
-                      language="javascript"
-                      theme="vs-light"
-                      value=""
-                      options={options}
-                      onChange={self.onChange}
-                      editorDidMount={self.editorDidMount.bind(self)}
-                    />
+              <SplitterLayout vertical style={{"width": "100%"}}>
+                <Tabs defaultActiveKey="1" size="small">
+                  <TabPane tab="Edit" key="1">
+                    <div style={{"height": "100%"}}>
+                      <MonacoEditor
+                        language="javascript"
+                        theme="vs-light"
+                        value=""
+                        options={options}
+                        onChange={self.onChange}
+                        editorDidMount={self.editorDidMount.bind(self)}
+                      />
                     </div>
-                    </TabPane>
-                    </Tabs>
-                    
-                    <div>
-                    <Tabs defaultActiveKey="1" size="small">
-                      <TabPane tab="Console" key="1">
-                        <XTerm ref='xterm' style={{
-                          addons:['fit', 'fullscreen'],
-                          overflow: 'hidden',
-                          position: 'relative',
-                          width: '100%',
-                          height: '100%'
-                        }} />
-                      </TabPane>
-                    </Tabs>
-                    
-                    </div>
-                  </SplitterLayout>
-
-                </SplitterLayout>
+                  </TabPane>
+                </Tabs>
                 
-        
+                <div>
+                  <Tabs defaultActiveKey="1" size="small">
+                    <TabPane tab="Console" key="1">
+                      <XTerm ref='xterm' style={{
+                        addons:['fit', 'fullscreen'],
+                        overflow: 'hidden',
+                        position: 'relative',
+                        width: '100%',
+                        height: '100%'
+                      }} />
+                    </TabPane>
+                  </Tabs>
+                </div>
+              </SplitterLayout>
+
+            </SplitterLayout>
           </SplitterLayout>
         </Layout>
       </div>

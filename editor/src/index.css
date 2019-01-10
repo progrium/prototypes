@@ -43,3 +43,7 @@ code {
 .ant-collapse.embedded .ant-collapse-item {
   border-bottom: 0px;
 }
+
+.embedded .ant-collapse-content-box {
+  padding-right: 0px !important;
+}
