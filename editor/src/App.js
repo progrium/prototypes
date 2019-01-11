@@ -19,30 +19,49 @@ const TreeSelectNode = TreeSelect.TreeNode;
 const qmux = window.qmux;
 const qrpc = window.qrpc;
 
-function FieldInput(props) {
-  var onChange = () => {}
-  switch (props.type) {
-    case "boolean":
-      return <Checkbox checked={props.value} />;
-    case "string":
-      return <Input size="small" style={{color:"white", backgroundColor: "#555", fontFamily:"monospace"}} onChange={onChange} value={props.value} />;
-    case "number":
-      return <InputNumber style={{width: "100%"}} size="small" value={props.value} />;
-    case "reference":
-      return <TreeSelect
-        size="small"
-        showSearch
-        style={{ width: "100%"}}
-        dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-        placeholder="Please select"
-        value="/server/server.go"
-        allowClear
-        treeDefaultExpandAll
-      >
-        {refTree}
-      </TreeSelect>;
-    default:
-      return "???";
+class FieldInput extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      expressionMode: false
+    };
+    this.toggleExpressionMode = this.toggleExpressionMode.bind(this);
+  }
+
+  toggleExpressionMode() {
+    this.setState({expressionMode: !this.state.expressionMode});
+  }
+
+  render() {
+    var onChange = () => {}
+    if (this.state.expressionMode) {
+      return <div onDoubleClick={this.toggleExpressionMode}>
+        <Input size="small" style={{color:"white", backgroundColor: "#555", fontFamily:"monospace"}} onChange={onChange} onDoubleClick={this.toggleExpressionMode} value={this.props.expression || this.props.value} />
+      </div>
+    }
+    switch (this.props.type) {
+      case "boolean":
+        return <div onDoubleClick={this.toggleExpressionMode}><Checkbox checked={this.props.value} /></div>;
+      case "string":
+        return <Input size="small" onChange={onChange} onDoubleClick={this.toggleExpressionMode} value={this.props.value} />;
+      case "number":
+        return <div onDoubleClick={this.toggleExpressionMode}><InputNumber style={{width: "100%"}} size="small" value={this.props.value} /></div>;
+      case "reference":
+        return <div onDoubleClick={this.toggleExpressionMode}><TreeSelect
+          size="small"
+          showSearch
+          style={{ width: "100%"}}
+          dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+          placeholder="Please select"
+          value="/server/server.go"
+          allowClear
+          treeDefaultExpandAll
+        >
+          {refTree}
+        </TreeSelect></div>;
+      default:
+        return "???";
+    }
   }
 }
 
@@ -78,28 +97,28 @@ function PropField(props) {
     case "string":
     case "number":
     case "reference":
-      return <LabeledField key={props.key} label={props.name}>{FieldInput(props)}</LabeledField>
+      return <LabeledField key={props.eventKey} label={props.name}><FieldInput {...props} /></LabeledField>
     case "struct":
       return (
-        <EmbeddedFields key={props.key} label={props.name} fields={props.fields}>
+        <EmbeddedFields key={props.eventKey} label={props.name} fields={props.fields}>
           {props.children}
         </EmbeddedFields>
       );
     case "map":
       return (
-        <MapFields key={props.key} label={props.name} fields={props.fields}>
+        <MapFields key={props.eventKey} label={props.name} fields={props.fields}>
           {props.children}
         </MapFields>
       );
     case "array":
       return (
-        <ArrayFields key={props.key} label={props.name} fields={props.fields}>
+        <ArrayFields key={props.eventKey} label={props.name} fields={props.fields}>
           {props.children}
         </ArrayFields>
       );
     default:
-      return <LabeledField key={props.key} label={props.name}>{FieldInput(props)}</LabeledField>              
-  }
+      return <LabeledField key={props.eventKey} label={props.name}><FieldInput {...props} /></LabeledField>              
+  }  
 }
 
 function EmbeddedFields(props) {
@@ -107,7 +126,9 @@ function EmbeddedFields(props) {
   return (
     <Collapse className="embedded" bordered={false} defaultActiveKey="1">
         <Panel header={props.label} key="1">
-          {fields.map(PropField)}
+          {fields.map((p) => {
+            return <PropField {...p} />
+          })}
           {props.children}
         </Panel>
     </Collapse>
@@ -120,7 +141,7 @@ function MapFields(props) {
     <Collapse className="embedded" bordered={false} defaultActiveKey="1">
         <Panel header={props.label} key="1">
           {fields.map((field) => {
-            return <KeyedField name={field.name}>{FieldInput(field)}</KeyedField>
+            return <KeyedField name={field.name}><FieldInput {...field} /></KeyedField>
           })}
           {props.children}
         </Panel>
@@ -133,11 +154,13 @@ function ArrayFields(props) {
   return (
     <Collapse className="embedded" bordered={false} defaultActiveKey="1">
         <Panel header={props.label} key="1">
-          <PropField type="number" name="Count" value={fields.length} />
+          <LabeledField key="count" label="Count"><InputNumber style={{width: "100%"}} size="small" value={fields.length} /></LabeledField>
           {fields.map((field, idx) => {
             field.name = "Element "+idx;
             return field
-          }).map(PropField)}
+          }).map((p) => {
+            return <PropField {...p} />
+          })}
           {props.children}
         </Panel>
     </Collapse>
@@ -147,19 +170,44 @@ function ArrayFields(props) {
 function PropFields(props) {
   return props.fields.map((el, idx) => {
     el.key = idx;
-    return PropField(el);
+    return <PropField {...el} />
   });
 }
 
+function Buttons(props) {
+  return (props.buttons||[]).map((button) => {
+    return <Button size="small" style={{marginTop: "10px", width: "100%"}}>
+          {button.name}
+      </Button>
+  });
+}
 
+// const demoMenu = (
+//   <Menu>
+//     <Menu.Item key="1"><Icon type="user" />1st menu item</Menu.Item>
+//     <Menu.Item key="2"><Icon type="user" />2nd menu item</Menu.Item>
+//     <Menu.Item key="3"><Icon type="user" />3rd item</Menu.Item>
+//   </Menu>
+// );
 
-const menu = (
-  <Menu>
-    <Menu.Item key="1"><Icon type="user" />1st menu item</Menu.Item>
-    <Menu.Item key="2"><Icon type="user" />2nd menu item</Menu.Item>
-    <Menu.Item key="3"><Icon type="user" />3rd item</Menu.Item>
-  </Menu>
-);
+function createComponentMenu(components) {
+  return <Menu>
+    {(components||[]).map((name) => {
+      return <Menu.Item key={name}>{name}</Menu.Item>
+    })}
+  </Menu> 
+}
+
+function createProjectMenu(projects) {
+  const onClick = (item, key, keyPath) => {
+    window.rpc.call("selectProject", item.key);
+  }
+  return <Menu onClick={onClick}>
+    {(projects||[]).map((project) => {
+      return <Menu.Item key={project.name}>{project.name}</Menu.Item>
+    })}
+  </Menu> 
+}
 
 function arrangeIntoTree(paths) {
   var tree = [];
@@ -225,9 +273,26 @@ function convertNodeToSelectTree(node) {
   return <TreeSelectNode title={node.name} value={node.path} key={node.path}>{node.children.map((n) => { return convertNodeToSelectTree(n) })}</TreeSelectNode>
 }
 
+function ProjectSelector(props) {
+  let project = props.projects.find((el) => {
+    return el.name === props.currentProject;
+  })
+  project = project || props.projects[0] || {name: "", path: ""};
+  return <Dropdown overlay={createProjectMenu(props.projects)} trigger={['click']}>
+        <h3 style={{margin: "12px 0px 2px 20px", fontSize: "22px", lineHeight: "22px", display: "block", width: "400px"}}>
+          {project.name} <Icon style={{fontSize: "18px"}} type="caret-down" />
+          <span style={{display: "block", color: "gray", fontSize: "12px"}}>{project.path}</span>
+        </h3>
+      </Dropdown>
+}
+
 function Header(props) {
   return <header id="header" className="clearfix">
     <Row>
+      <Col span={12} className="ant-menu-horizontal" style={{paddingBottom: "7px"}}>
+      <ProjectSelector projects={props.projects} currentProject={props.currentProject} />
+      </Col>
+      <Col span={12}>
       <Menu
         mode="horizontal"
         defaultSelectedKeys={['1']}
@@ -236,28 +301,28 @@ function Header(props) {
         <Menu.Item style={{float: 'right'}} key="0"></Menu.Item>
         <Menu.Item style={{float: 'right'}} key="1">progrium</Menu.Item>
       </Menu>
+      </Col>
     </Row>
   </header>
 }
 
 function Inspector(props) {
+  var onChange = () => {}
   return <div>
     <Row style={{padding: "5px"}}> 
-      <Col span={2}><Checkbox checked={props.active} /></Col>
-      <Col span={22}><Input size="small" value={props.name} /></Col>
+      <Col span={2}><Checkbox checked={props.node.active} /></Col>
+      <Col span={22}><Input size="small" value={props.name} onChange={onChange} /></Col>
     </Row>
     <Collapse bordered={false} defaultActiveKey={['1']}>
-      {props.components.map((com) => {
-        return <Panel header={com.name} key="1">
+      {props.node.components.map((com, idx) => {
+        return <Panel header={com.name} key={idx}>
           <PropFields fields={com.fields} />
-          <Button size="small" style={{marginTop: "10px", width: "100%"}}>
-            Test Button
-          </Button>
+          <Buttons buttons={com.buttons} />
         </Panel>
       })}
     </Collapse>
     <div style={{margin: "20px"}}>
-      <Dropdown overlay={menu}>
+      <Dropdown overlay={createComponentMenu(props.components)}>
         <Button style={{width: "100%"}}>
           Add Component <Icon type="down" />
         </Button>
@@ -272,9 +337,13 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      Message: "Loading...",
-      Counter: 0,
-      Files: []
+      remote: {
+        components: [],
+        projects: [],
+        hierarchy: {},
+        currentProject: null
+      },
+      inspectNode: null
     }
   }
 
@@ -285,7 +354,7 @@ class App extends Component {
       "serveRPC": async (r, c) => {
         var obj = await c.decode();
         console.log(obj);
-        setState(obj);
+        setState({"remote": obj});
       }
     });
     (async () => {
@@ -310,9 +379,10 @@ class App extends Component {
     //window.rpc.call("increment");
   }
 
-  async onSelect(selectedKeys, info) {
-    var data = await window.rpc.call("readFile", selectedKeys[0]);
-    this.editor.getModel().setValue(data);
+  onSelect(selectedKeys, info) {
+    this.setState({"inspectNode": selectedKeys[0]});
+    //var data = await window.rpc.call("readFile", selectedKeys[0]);
+    //this.editor.getModel().setValue(data);
   }
 
 
@@ -321,35 +391,19 @@ class App extends Component {
       selectOnLineNumbers: true,
       automaticLayout: true
     };
-    const fileTree = arrangeIntoTree(this.state.Files);
-    const treeNodes = fileTree.map(convertNodeToTree);
-    refTree = fileTree.map(convertNodeToSelectTree);
-    const exampleComponents = [
-      {name: "foo.Component", fields: [
-        {type: "string", name: "StringField", value: "Foobar"},
-        {type: "number", name: "NumberField", value: 6},
-        {type: "boolean", name: "BoolField", value: true},
-        {type: "struct", name: "SomeObject", fields: [
-          {type: "string", name: "StringField", value: "Foobar"},
-        ]},
-        {type: "map", name: "MapValue", fields: [
-          {type: "string", name: "str2", value: "hello1"},
-          {type: "string", name: "str1", value: "hello2"},
-        ]},
-        {type: "array", name: "NumberList", fields: [
-          {type: "number", value: 6},
-          {type: "number", value: 6},
-        ]},
-      ]},
-      {name: "twilio.Client", fields: [
-        {type: "reference", name: "Ref", value: "/Foobar"},
-        {type: "number", name: "NumberField", value: 6},
-      ]}
-    ]
+    const nodeTree = arrangeIntoTree(this.state.remote.hierarchy);
+    const treeNodes = nodeTree.map(convertNodeToTree);
+    refTree = nodeTree.map(convertNodeToSelectTree);
     const self = this;
+    let inspector = <div></div>
+    if (this.state.inspectNode !== null) {
+      let parts = this.state.inspectNode.split("/");
+      let name = parts[parts.length-1];
+      inspector = <Inspector name={name} node={this.state.remote.nodes[this.state.inspectNode]} components={this.state.remote.components} />
+    }
     return (
       <div style={{height: "100%"}}>
-        <Header />
+        <Header projects={this.state.remote.projects} currentProject={this.state.remote.currentProject} />
         <Layout style={{height: "100%"}}>
           <SplitterLayout customClassName="tree" primaryIndex={1} secondaryMinSize={150} secondaryInitialSize={200}>
             <DirectoryTree
@@ -360,7 +414,7 @@ class App extends Component {
             </DirectoryTree>
             
             <SplitterLayout customClassName="tree" primaryIndex={1} secondaryMinSize={250} secondaryInitialSize={250}>
-              <Inspector name="TestObject" active={true} components={exampleComponents} />
+              {inspector}
 
               <SplitterLayout vertical style={{"width": "100%"}}>
                 <Tabs defaultActiveKey="1" size="small">
