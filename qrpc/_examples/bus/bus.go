@@ -24,7 +24,7 @@ func main() {
 
 	// make and connect a backend
 	api := qrpc.NewAPI()
-	handler, err := qrpc.ExportFunc(func() string {
+	handler, err := qrpc.Export(func() string {
 		return "Hello world"
 	})
 	if err != nil {
@@ -37,7 +37,7 @@ func main() {
 	}
 	backend := &qrpc.Client{Session: backendSess, API: api}
 	go backend.ServeAPI()
-	err = backend.Call("register", []string{"hello"}, nil)
+	_, err = backend.Call("register", []string{"hello"}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +49,7 @@ func main() {
 	}
 	frontend := &qrpc.Client{Session: frontendSess}
 	var resp string
-	err = frontend.Call("hello", nil, &resp)
+	_, err = frontend.Call("hello", nil, &resp)
 	if err != nil {
 		panic(err)
 	}

@@ -51,11 +51,14 @@ function loopYield(name) {
 }
 // only one codec per channel because of read loop!
 var FrameCodec = /** @class */ (function () {
-    function FrameCodec(channel) {
+    function FrameCodec(channel, readLimit) {
+        if (readLimit === void 0) { readLimit = -1; }
         this.channel = channel;
         this.codec = msgpack;
         this.buf = [];
         this.waiters = [];
+        this.readLimit = readLimit;
+        this.readCount = 0;
         this.readLoop();
     }
     FrameCodec.prototype.readLoop = function () {
@@ -65,6 +68,9 @@ var FrameCodec = /** @class */ (function () {
                 switch (_a.label) {
                     case 0:
                         if (!true) return [3 /*break*/, 7];
+                        if (this.readLimit > 0 && this.readCount >= this.readLimit) {
+                            return [2 /*return*/];
+                        }
                         _a.label = 1;
                     case 1:
                         _a.trys.push([1, 5, , 6]);
@@ -75,7 +81,7 @@ var FrameCodec = /** @class */ (function () {
                     case 3:
                         sbuf = _a.sent();
                         if (sbuf === undefined) {
-                            //console.log("DEBUG: readloop exited");
+                            //console.log("DEBUG: readloop exited on length");
                             return [2 /*return*/];
                         }
                         sdata = new DataView(new Uint8Array(sbuf).buffer);
@@ -84,9 +90,10 @@ var FrameCodec = /** @class */ (function () {
                     case 4:
                         buf = _a.sent();
                         if (buf === undefined) {
-                            //console.log("DEBUG: readloop exited");
+                            //console.log("DEBUG: readloop exited on data");
                             return [2 /*return*/];
                         }
+                        this.readCount++;
                         v = this.codec.decode(buf);
                         if (this.waiters.length > 0) {
                             this.waiters.shift()(v);
@@ -224,12 +231,38 @@ var responder = /** @class */ (function () {
             });
         });
     };
+    responder.prototype.hijack = function (v) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (v instanceof Error) {
+                            this.header.Error = v.message;
+                            v = null;
+                        }
+                        this.header.Hijacked = true;
+                        return [4 /*yield*/, this.codec.encode(this.header)];
+                    case 1:
+                        _a.sent();
+                        return [4 /*yield*/, this.codec.encode(v)];
+                    case 2:
+                        _a.sent();
+                        return [2 /*return*/, this.ch];
+                }
+            });
+        });
+    };
     return responder;
 }());
 var ResponseHeader = /** @class */ (function () {
     function ResponseHeader() {
     }
     return ResponseHeader;
+}());
+var Response = /** @class */ (function () {
+    function Response() {
+    }
+    return Response;
 }());
 var Call = /** @class */ (function () {
     function Call(Destination) {
@@ -292,32 +325,52 @@ var Client = /** @class */ (function () {
     };
     Client.prototype.call = function (path, args) {
         return __awaiter(this, void 0, void 0, function () {
-            var ch, codec, resp, ret;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.session.open()];
+            var ch, codec, header, resp, _a, e_2;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 10, , 12]);
+                        return [4 /*yield*/, this.session.open()];
                     case 1:
-                        ch = _a.sent();
-                        codec = new FrameCodec(ch);
+                        ch = _b.sent();
+                        codec = new FrameCodec(ch, 2);
                         return [4 /*yield*/, codec.encode(new Call(path))];
                     case 2:
-                        _a.sent();
+                        _b.sent();
                         return [4 /*yield*/, codec.encode(args)];
                     case 3:
-                        _a.sent();
+                        _b.sent();
                         return [4 /*yield*/, codec.decode()];
                     case 4:
-                        resp = _a.sent();
-                        if (resp.Error !== undefined && resp.Error !== null) {
-                            return [2 /*return*/, Promise.reject(resp.Error)];
-                        }
-                        return [4 /*yield*/, codec.decode()];
-                    case 5:
-                        ret = _a.sent();
+                        header = _b.sent();
+                        if (!(header.Error !== undefined && header.Error !== null)) return [3 /*break*/, 6];
                         return [4 /*yield*/, ch.close()];
+                    case 5:
+                        _b.sent();
+                        return [2 /*return*/, Promise.reject(header.Error)];
                     case 6:
-                        _a.sent();
-                        return [2 /*return*/, Promise.resolve(ret)];
+                        resp = new Response();
+                        resp.error = header.Error;
+                        resp.hijacked = header.Hijacked;
+                        resp.channel = ch;
+                        _a = resp;
+                        return [4 /*yield*/, codec.decode()];
+                    case 7:
+                        _a.reply = _b.sent();
+                        if (!(resp.hijacked !== true)) return [3 /*break*/, 9];
+                        return [4 /*yield*/, ch.close()];
+                    case 8:
+                        _b.sent();
+                        _b.label = 9;
+                    case 9: return [2 /*return*/, resp];
+                    case 10:
+                        e_2 = _b.sent();
+                        return [4 /*yield*/, ch.close()];
+                    case 11:
+                        _b.sent();
+                        console.error(e_2);
+                        return [3 /*break*/, 12];
+                    case 12: return [2 /*return*/];
                 }
             });
         });
@@ -390,7 +443,7 @@ function exportFunc(fn, rcvr) {
     return {
         serveRPC: function (r, c) {
             return __awaiter(this, void 0, void 0, function () {
-                var args, _a, _b, e_2;
+                var args, _a, _b, e_3;
                 return __generator(this, function (_c) {
                     switch (_c.label) {
                         case 0: return [4 /*yield*/, c.decode()];
@@ -405,16 +458,16 @@ function exportFunc(fn, rcvr) {
                             _b.apply(_a, [((_c.sent()) || null)]);
                             return [3 /*break*/, 5];
                         case 4:
-                            e_2 = _c.sent();
-                            switch (typeof e_2) {
+                            e_3 = _c.sent();
+                            switch (typeof e_3) {
                                 case 'string':
-                                    r.return(new Error(e_2));
+                                    r.return(new Error(e_3));
                                 case 'undefined':
                                     r.return(new Error("unknown error"));
                                 case 'object':
-                                    r.return(new Error(e_2.message));
+                                    r.return(new Error(e_3.message));
                                 default:
-                                    r.return(new Error("unknown error: " + e_2));
+                                    r.return(new Error("unknown error: " + e_3));
                             }
                             return [3 /*break*/, 5];
                         case 5: return [2 /*return*/];

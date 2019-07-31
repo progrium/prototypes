@@ -44,31 +44,39 @@ class FrameCodec {
     codec: Codec;
     buf: Array<any>;
     waiters: Array<any>;
+    readLimit: number;
+    readCount: number;
 
-    constructor(channel: Channel) {
+    constructor(channel: Channel, readLimit: number=-1) {
         this.channel = channel;
         this.codec = msgpack;
         this.buf = [];
         this.waiters = [];
+        this.readLimit = readLimit;
+        this.readCount = 0;
         this.readLoop();
     }
 
     async readLoop() {
         while(true) {
+            if (this.readLimit > 0 && this.readCount >= this.readLimit) {
+                return;
+            }
             try {
                 await loopYield("readloop");
                 var sbuf = await this.channel.read(4);
                 if (sbuf === undefined) {
-                    //console.log("DEBUG: readloop exited");
+                    //console.log("DEBUG: readloop exited on length");
                     return;
                 }
                 var sdata = new DataView(new Uint8Array(sbuf).buffer);
                 var size = sdata.getUint32(0);
                 var buf = await this.channel.read(size);
                 if (buf === undefined) {
-                    //console.log("DEBUG: readloop exited");
+                    //console.log("DEBUG: readloop exited on data");
                     return;
                 }
+                this.readCount++;
                 var v = this.codec.decode(buf);
                 if (this.waiters.length > 0) {
                     this.waiters.shift()(v);
@@ -152,6 +160,7 @@ export class API {
 export interface Responder {
     header: ResponseHeader;
     return(v: any): void;
+    hijack(v: any): Promise<Channel>;
 }
 
 class responder implements Responder {
@@ -174,14 +183,33 @@ class responder implements Responder {
         await this.codec.encode(v);
         return this.ch.close();
     }
+
+    async hijack(v: any): Promise<Channel> {
+        if (v instanceof Error) {
+            this.header.Error = v.message;
+            v = null;
+        }
+        this.header.Hijacked = true;
+        await this.codec.encode(this.header);
+        await this.codec.encode(v);
+        return this.ch;
+    }
 }
 
 class ResponseHeader {
     Error: string;
+    Hijacked: boolean;
+}
+
+class Response {
+    error: string;
+    hijacked: boolean;
+    reply: any;
+    channel: Channel;
 }
 
 interface Caller {
-    call(method: string, args: any): Promise<any>;
+    call(method: string, args: any): Promise<Response>;
 }
 
 export class Call {
@@ -244,20 +272,31 @@ export class Client implements Caller {
         return this.session.close();
     }
 
-    async call(path: string, args: any): Promise<any> {
-        var ch = await this.session.open();
-        var codec = new FrameCodec(ch);
-        await codec.encode(new Call(path));
-        await codec.encode(args);
-    
-        var resp: ResponseHeader = await codec.decode();
-        if (resp.Error !== undefined && resp.Error !== null) {
-            return Promise.reject(resp.Error);
-        }
+    async call(path: string, args: any): Promise<Response> {
+        try {
+            var ch = await this.session.open();
+            var codec = new FrameCodec(ch, 2);
+            await codec.encode(new Call(path));
+            await codec.encode(args);
         
-        var ret = await codec.decode(); 
-        await ch.close();    
-        return Promise.resolve(ret);    
+            var header: ResponseHeader = await codec.decode();
+            if (header.Error !== undefined && header.Error !== null) {
+                await ch.close();
+                return Promise.reject(header.Error);
+            }
+            var resp: Response = new Response();
+            resp.error = header.Error;
+            resp.hijacked = header.Hijacked;
+            resp.channel = ch;
+            resp.reply = await codec.decode(); 
+            if (resp.hijacked !== true) {
+                await ch.close();
+            }
+            return resp;    
+        } catch (e) {
+            await ch.close();
+            console.error(e);
+        }
     }
 }
 

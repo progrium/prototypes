@@ -28,7 +28,7 @@ var listener = null;
     console.log("connected...")
     var client = new qrpc.Client(session);
     console.log("calling...")
-    console.log(await client.call("demo/lower", "HELLO WORLD!"));
+    console.log((await client.call("demo/lower", "HELLO WORLD!")).reply);
     await session.close();
     await listener.close();
 

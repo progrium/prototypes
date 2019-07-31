@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 
 	"github.com/progrium/prototypes/libmux/mux"
 	"github.com/progrium/prototypes/qrpc"
 )
 
-const addr = "localhost:4242"
+const addr = "localhost:4243"
 
 func main() {
 	// define api
@@ -20,7 +22,12 @@ func main() {
 			r.Return(err)
 			return
 		}
-		r.Return(msg)
+		ch, err := r.Hijack("Something else")
+		if err != nil {
+			return
+		}
+		io.WriteString(ch, msg)
+		ch.Close()
 	})
 
 	// start server with api
@@ -39,10 +46,17 @@ func main() {
 		panic(err)
 	}
 	client := &qrpc.Client{Session: sess}
-	var resp string
-	_, err = client.Call("echo", "Hello world", &resp)
+	resp, err := client.Call("echo", "Hello world", nil)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("resp: %#v\n", resp)
+	if resp.Hijacked {
+		reply, err := ioutil.ReadAll(resp.Channel)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("resp: %#v\n", string(reply))
+		return
+	}
+	panic("no hijack")
 }

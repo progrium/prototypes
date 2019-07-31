@@ -39,8 +39,16 @@ func (c *Call) Decode(v interface{}) error {
 	return c.Decoder.Decode(v)
 }
 
+type Response struct {
+	ResponseHeader
+
+	Reply   interface{}
+	Channel mux.Channel
+}
+
 type ResponseHeader struct {
-	Error error
+	Error    error
+	Hijacked bool // after parsing response, keep stream open for whatever protocol
 }
 
 type responder struct {
@@ -80,6 +88,26 @@ func (r *responder) Return(v interface{}) error {
 	return r.ch.Close()
 }
 
+func (r *responder) Hijack(v interface{}) (mux.Channel, error) {
+	enc := r.c.Encoder(r.ch)
+	var e error
+	var ok bool
+	if e, ok = v.(error); ok {
+		v = nil
+	}
+	r.header.Error = e
+	r.header.Hijacked = true
+	err := enc.Encode(r.header)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	return r.ch, nil
+}
+
 type Client struct {
 	Session mux.Session
 	API     API
@@ -110,12 +138,11 @@ func (c *Client) Proxy(path string) Caller {
 	return &proxy{path: path, client: c}
 }
 
-func (c *Client) Call(path string, args, reply interface{}) error {
+func (c *Client) Call(path string, args, reply interface{}) (*Response, error) {
 	ch, err := c.Session.Open()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer ch.Close()
 	codec := newFrameCodec(c.Codec)
 	// request
 	enc := codec.Encoder(ch)
@@ -123,26 +150,44 @@ func (c *Client) Call(path string, args, reply interface{}) error {
 		Destination: path,
 	})
 	if err != nil {
-		return err
+		ch.Close()
+		return nil, err
 	}
 	err = enc.Encode(args)
 	if err != nil {
-		return err
+		ch.Close()
+		return nil, err
 	}
 	// response
 	dec := codec.Decoder(ch)
-	var resp ResponseHeader
-	err = dec.Decode(&resp)
+	var header ResponseHeader
+	err = dec.Decode(&header)
 	if err != nil {
-		return err
+		ch.Close()
+		return nil, err
+	}
+	if !header.Hijacked {
+		defer ch.Close()
+	}
+	resp := &Response{
+		ResponseHeader: header,
+		Channel:        ch,
+		Reply:          reply,
 	}
 	if resp.Error != nil {
-		return fmt.Errorf("remote: %s", resp.Error)
+		return resp, fmt.Errorf("remote: %s", resp.Error)
 	}
-	if reply != nil {
-		return dec.Decode(reply)
+	if resp.Reply == nil {
+		var buf []byte
+		if err := dec.Decode(&buf); err != nil {
+			return resp, err
+		}
+	} else {
+		if err := dec.Decode(resp.Reply); err != nil {
+			return resp, err
+		}
 	}
-	return nil
+	return resp, nil
 }
 
 type proxy struct {
@@ -150,7 +195,7 @@ type proxy struct {
 	client *Client
 }
 
-func (p *proxy) Call(path string, args, reply interface{}) error {
+func (p *proxy) Call(path string, args, reply interface{}) (*Response, error) {
 	return p.client.Call(path_.Join(p.path, path), args, reply)
 }
 

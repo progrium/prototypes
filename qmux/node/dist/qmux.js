@@ -247,7 +247,11 @@ var Session = /** @class */ (function () {
         });
     };
     Session.prototype.getCh = function (id) {
-        return this.channels[id];
+        var ch = this.channels[id];
+        if (ch.localId !== id) {
+            console.log("bad ids:", id, ch.localId, ch.remoteId);
+        }
+        return ch;
     };
     Session.prototype.addCh = function (ch) {
         var _this = this;

@@ -9,7 +9,6 @@ import (
 
 	"github.com/progrium/prototypes/libmux/mux"
 	"github.com/progrium/prototypes/qrpc"
-	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
 type Bus struct {
@@ -42,9 +41,9 @@ func NewBus() *Bus {
 	return bus
 }
 
-func (b *Bus) ServeAPI(sess mux.Session, ch mux.Channel) {
+func (b *Bus) ServeAPI(sess mux.Session, ch mux.Channel, c qrpc.Codec) {
 	var buf bytes.Buffer
-	dec := msgpack.NewDecoder(io.TeeReader(ch, &buf))
+	dec := c.Decoder(io.TeeReader(ch, &buf))
 	var call qrpc.Call
 	err := dec.Decode(&call)
 	if err != nil {
@@ -55,7 +54,7 @@ func (b *Bus) ServeAPI(sess mux.Session, ch mux.Channel) {
 	if err != nil {
 		panic(err)
 	}
-	resp := qrpc.NewResponder(ch, &qrpc.ResponseHeader{})
+	resp := qrpc.NewResponder(ch, c, &qrpc.ResponseHeader{})
 
 	handler := b.API.Handler(call.Destination)
 	if handler != nil {

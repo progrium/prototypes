@@ -11,6 +11,7 @@ import (
 type Responder interface {
 	Header() *ResponseHeader
 	Return(interface{}) error
+	Hijack(interface{}) (mux.Channel, error)
 }
 
 type Handler interface {
@@ -24,7 +25,7 @@ func (f HandlerFunc) ServeRPC(resp Responder, call *Call) {
 }
 
 type Caller interface {
-	Call(path string, args, reply interface{}) error
+	Call(path string, args, reply interface{}) (*Response, error)
 	Proxy(path string) Caller
 }
 
@@ -60,7 +61,7 @@ func (a *api) Handler(path string) Handler {
 	var handler Handler
 	a.mu.Lock()
 	for k, v := range a.handlers {
-		if strings.HasPrefix(path, k) {
+		if (strings.HasSuffix(k, "/") && strings.HasPrefix(path, k)) || path == k {
 			handler = v
 			break
 		}

@@ -229,7 +229,11 @@ export class Session implements ISession {
 	}
 
 	getCh(id: number): Channel {
-		return this.channels[id];
+		var ch = this.channels[id];
+		if (ch.localId !== id) {
+			console.log("bad ids:", id, ch.localId, ch.remoteId);
+		}
+		return ch;
 	}
 	
 	addCh(ch: Channel): number {
@@ -362,7 +366,7 @@ export class Channel {
                 }
                 if (this.readBuf.length >= len) {
                     var data = this.readBuf.slice(0, len);
-                    this.readBuf = this.readBuf.slice(len);
+					this.readBuf = this.readBuf.slice(len);
                     resolve(data);
                     return;
                 }

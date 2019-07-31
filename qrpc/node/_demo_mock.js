@@ -178,7 +178,7 @@ var listener = new MockListener(session);
 //     console.log(err.stack);
 // });
 
-var qrpc = require("./qrpc.js");
+var qrpc = require("./dist/qrpc.js");
 
 (async () => {
     var api = new qrpc.API();
@@ -201,7 +201,7 @@ var qrpc = require("./qrpc.js");
 (async () => {
     //console.log("connecting...");
     var client = new qrpc.Client(session);
-    console.log(await client.call("demo/lower", "HELLO WORLD!"));
+    console.log((await client.call("demo/lower", "HELLO WORLD!")).reply);
     await session.close();
 
 })().catch(async (err) => { 
