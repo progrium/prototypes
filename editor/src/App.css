@@ -30,3 +30,12 @@
     transform: rotate(360deg);
   }
 }
+
+.projects li {
+  padding-left: 10px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  height: 60px !important;
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
+}

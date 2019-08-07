@@ -1,0 +1,25 @@
+{
+  "Children": [
+    "Test"
+  ],
+  "Active": true,
+  "Name": "NodeB",
+  "ID": "bhecfajmvbaicpltnghg",
+  "Components": [
+    {
+      "Data": {
+        "Message": "From NodeB"
+      },
+      "Delegate": "bhecfajmvbaicpltnghg",
+      "Name": "Delegate"
+    },
+    {
+      "Data": {
+        "Foobar": "",
+        "RefTest": null
+      },
+      "Delegate": "",
+      "Name": "AnotherComponent"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+
+// message numbers
 const msgChannelOpen = 100;
 const msgChannelOpenConfirm = 101;
 const msgChannelOpenFailure = 102;
@@ -6,10 +8,12 @@ const msgChannelData = 104;
 const msgChannelEOF = 105;
 const msgChannelClose = 106;
 
+// hardcoded window size constants
 const minPacketLength = 9;
 const channelMaxPacket = 1 << 15;
 const channelWindowSize = 64 * channelMaxPacket;
 
+// message types as objects
 interface channelOpenMsg {
 	peersID:       number;
 	peersWindow:   number;
@@ -46,6 +50,8 @@ interface channelCloseMsg {
 	peersID: number;
 }
 
+// queue primitive for incoming connections and
+// signaling channel ready state
 class queue {
 	q: Array<any>
 	waiters: Array<Function>
@@ -86,6 +92,7 @@ class queue {
 	}
 }
 
+// the libmux API
 interface IConn {
 	read(len: number): Promise<Buffer>;
 	write(buffer: Buffer): Promise<number>;
@@ -103,6 +110,7 @@ interface IChannel extends IConn {
 	ident(): number
 }
 
+// session class that manages the "connection"
 export class Session implements ISession {
 	conn: IConn;
 	channels: Array<Channel>;
@@ -265,6 +273,7 @@ export class Session implements ISession {
 	}
 }
 
+// channel represents a virtual muxed connection
 export class Channel {
 	localId: number;
 	remoteId: number;

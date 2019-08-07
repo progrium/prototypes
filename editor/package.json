@@ -5,6 +5,9 @@
   "dependencies": {
     "antd": "^3.11.6",
     "chai": "^4.2.0",
+    "console-feed": "^2.8.5",
+    "express-ws": "^4.0.0",
+    "monaco-editor-webpack-plugin": "^1.7.0",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "react-monaco-editor": "^0.22.0",
@@ -12,10 +15,11 @@
     "react-scripts": "2.1.2",
     "react-splitter-layout": "^3.0.1",
     "react-xterm": "^2.0.4",
-    "underscore": "^1.9.1"
+    "underscore": "^1.9.1",
+    "xterm": "^3.11.0"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "react-app-rewired start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -28,5 +32,8 @@
     "not dead",
     "not ie <= 11",
     "not op_mini all"
-  ]
+  ],
+  "devDependencies": {
+    "react-app-rewired": "^2.1.0"
+  }
 }

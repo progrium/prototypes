@@ -5,6 +5,7 @@ package reflected
 
 import (
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -109,8 +110,15 @@ func (v Value) Kind() reflect.Kind {
 	return v.v.Kind()
 }
 
+func (v Value) IsValid() bool {
+	return v.v.IsValid()
+}
+
 // IsNil reports whether its argument v is nil. The argument must be a chan, func, interface, map, pointer, or slice value; if it is not, IsNil panics. Note that IsNil is not always equivalent to a regular comparison with nil in Go. For example, if v was created by calling ValueOf with an uninitialized interface variable i, i==nil will be true but v.IsNil will panic as v will be the zero Value.
 func (v Value) IsNil() bool {
+	if v.v.Kind() == reflect.Invalid && !v.v.IsValid() {
+		return true
+	}
 	return v.v.IsNil()
 }
 
@@ -254,6 +262,7 @@ func (v Value) Keys() []string {
 			}
 			keys = append(keys, k)
 		}
+		sort.Sort(sort.StringSlice(keys))
 		return keys
 	}
 	return v.Type().Fields()
@@ -314,4 +323,8 @@ func (v Value) Invoke(args ...interface{}) []Value {
 // Type returns the Type for Value v.
 func (v Value) Type() Type {
 	return Type{v.valueOrElem().Type()}
+}
+
+func TypeOf(v interface{}) Type {
+	return ValueOf(v).Type()
 }

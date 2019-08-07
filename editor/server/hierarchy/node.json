@@ -1,0 +1,11 @@
+{
+  "Children": [
+    "NodeA",
+    "NodeB",
+    "Server"
+  ],
+  "Active": true,
+  "Name": "",
+  "ID": "bhecfajmvbaicpltnggg",
+  "Components": null
+}

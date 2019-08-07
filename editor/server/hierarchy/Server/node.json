@@ -1,0 +1,99 @@
+{
+  "Children": null,
+  "Active": true,
+  "Name": "Server",
+  "ID": "bhecffbmvbaicpltngi0",
+  "Components": [
+    {
+      "Data": {
+        "Message": "Hello DANA",
+        "Hello": ""
+      },
+      "Delegate": "bhecffbmvbaicpltngi0",
+      "Name": "Delegate"
+    },
+    {
+      "Data": {
+        "Addr": ":2222"
+      },
+      "Delegate": "",
+      "Name": "SSHServer"
+    },
+    {
+      "Data": {
+        "StringValue": "",
+        "IntValue": 2,
+        "Object": {
+          "Foobar": "",
+          "Baz": false
+        },
+        "MapData": null,
+        "ListData": null
+      },
+      "Delegate": "",
+      "Name": "PlaceholderComponent"
+    },
+    {
+      "Data": {
+        "Addr": ":8080"
+      },
+      "Delegate": "",
+      "Name": "WebServer"
+    },
+    {
+      "Data": {
+        "User": {
+          "RawData": {
+            "avatar_url": "https://avatars0.githubusercontent.com/u/647?v=4",
+            "bio": null,
+            "blog": "progrium.com",
+            "company": null,
+            "created_at": "2008-02-22T20:00:53Z",
+            "email": "progrium@gmail.com",
+            "events_url": "https://api.github.com/users/progrium/events{/privacy}",
+            "followers": 3091,
+            "followers_url": "https://api.github.com/users/progrium/followers",
+            "following": 28,
+            "following_url": "https://api.github.com/users/progrium/following{/other_user}",
+            "gists_url": "https://api.github.com/users/progrium/gists{/gist_id}",
+            "gravatar_id": "",
+            "hireable": null,
+            "html_url": "https://github.com/progrium",
+            "id": 647,
+            "location": "Austin, TX",
+            "login": "progrium",
+            "name": "Jeff Lindsay",
+            "node_id": "MDQ6VXNlcjY0Nw==",
+            "organizations_url": "https://api.github.com/users/progrium/orgs",
+            "public_gists": 129,
+            "public_repos": 199,
+            "received_events_url": "https://api.github.com/users/progrium/received_events",
+            "repos_url": "https://api.github.com/users/progrium/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/progrium/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/progrium/subscriptions",
+            "type": "User",
+            "updated_at": "2019-03-06T00:21:51Z",
+            "url": "https://api.github.com/users/progrium"
+          },
+          "Provider": "github",
+          "Email": "progrium@gmail.com",
+          "Name": "Jeff Lindsay",
+          "FirstName": "",
+          "LastName": "",
+          "NickName": "progrium",
+          "Description": "",
+          "UserID": "647",
+          "AvatarURL": "https://avatars0.githubusercontent.com/u/647?v=4",
+          "Location": "Austin, TX",
+          "AccessToken": "c53e1d7be7b645e0e192eb872aff3fe079f4831a",
+          "AccessTokenSecret": "",
+          "RefreshToken": "",
+          "ExpiresAt": "0001-01-01T00:00:00Z"
+        }
+      },
+      "Delegate": "",
+      "Name": "Auth"
+    }
+  ]
+}
