@@ -2332,9 +2332,9 @@ console-control-strings@^1.0.0, console-control-strings@~1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/console-control-strings/-/console-control-strings-1.1.0.tgz#3d7cf4464db6446ea644bf4b39507f9851008e8e"
 
-console-feed@^2.8.5:
-  version "2.8.5"
-  resolved "https://registry.yarnpkg.com/console-feed/-/console-feed-2.8.5.tgz#d91c360faf79c73fbc774fc5175b9ebbe6e1ebb4"
+console-feed@^2.8.10:
+  version "2.8.10"
+  resolved "https://registry.yarnpkg.com/console-feed/-/console-feed-2.8.10.tgz#a4f215f7972d8855b379fa2e4f31248d5f5a578b"
   dependencies:
     emotion "^9.1.1"
     emotion-theming "^9.0.0"
@@ -2393,7 +2393,7 @@ core-js@2.5.7:
 
 core-js@^1.0.0:
   version "1.2.7"
-  resolved "http://registry.npmjs.org/core-js/-/core-js-1.2.7.tgz#652294c14651db28fa93bd2d5ff2983a4f08c636"
+  resolved "https://registry.npmjs.org/core-js/-/core-js-1.2.7.tgz#652294c14651db28fa93bd2d5ff2983a4f08c636"
 
 core-js@^2.4.0, core-js@^2.5.0:
   version "2.6.1"
@@ -4367,7 +4367,7 @@ immutable@^3.7.4:
 
 immutable@~3.7.4:
   version "3.7.6"
-  resolved "http://registry.npmjs.org/immutable/-/immutable-3.7.6.tgz#13b4d3cb12befa15482a26fe1b2ebae640071e4b"
+  resolved "https://registry.npmjs.org/immutable/-/immutable-3.7.6.tgz#13b4d3cb12befa15482a26fe1b2ebae640071e4b"
 
 import-cwd@^2.0.0:
   version "2.1.0"
@@ -9709,7 +9709,7 @@ xtend@^4.0.0, xtend@~4.0.1:
 
 xterm@3.1.0:
   version "3.1.0"
-  resolved "http://registry.npmjs.org/xterm/-/xterm-3.1.0.tgz#7f7e1c8cf4b80bd881a4e8891213b851423e90c9"
+  resolved "https://registry.npmjs.org/xterm/-/xterm-3.1.0.tgz#7f7e1c8cf4b80bd881a4e8891213b851423e90c9"
 
 xterm@^3.11.0:
   version "3.11.0"

@@ -5,7 +5,7 @@
   "dependencies": {
     "antd": "^3.11.6",
     "chai": "^4.2.0",
-    "console-feed": "^2.8.5",
+    "console-feed": "^2.8.10",
     "express-ws": "^4.0.0",
     "monaco-editor-webpack-plugin": "^1.7.0",
     "react": "^16.7.0",
