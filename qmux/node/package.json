@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/qmux_node.js",
   "dependencies": {
-    "ws": "^6.0.0"
+    "ws": "^7.4.6"
   },
   "devDependencies": {
     "@types/node": "^10.9.4",
