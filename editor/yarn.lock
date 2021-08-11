@@ -2393,7 +2393,7 @@ core-js@2.5.7:
 
 core-js@^1.0.0:
   version "1.2.7"
-  resolved "http://registry.npmjs.org/core-js/-/core-js-1.2.7.tgz#652294c14651db28fa93bd2d5ff2983a4f08c636"
+  resolved "https://registry.npmjs.org/core-js/-/core-js-1.2.7.tgz#652294c14651db28fa93bd2d5ff2983a4f08c636"
 
 core-js@^2.4.0, core-js@^2.5.0:
   version "2.6.1"
@@ -4367,7 +4367,7 @@ immutable@^3.7.4:
 
 immutable@~3.7.4:
   version "3.7.6"
-  resolved "http://registry.npmjs.org/immutable/-/immutable-3.7.6.tgz#13b4d3cb12befa15482a26fe1b2ebae640071e4b"
+  resolved "https://registry.npmjs.org/immutable/-/immutable-3.7.6.tgz#13b4d3cb12befa15482a26fe1b2ebae640071e4b"
 
 import-cwd@^2.0.0:
   version "2.1.0"
@@ -6443,8 +6443,8 @@ path-key@^2.0.0, path-key@^2.0.1:
   resolved "https://registry.yarnpkg.com/path-key/-/path-key-2.0.1.tgz#411cadb574c5a140d3a4b1910d40d80cc9f40b40"
 
 path-parse@^1.0.5, path-parse@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.6.tgz#d62dbb5679405d72c4737ec58600e9ddcf06d24c"
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.7.tgz#fbc114b60ca42b30d9daf5858e4bd68bbedb6735"
 
 path-to-regexp@0.1.7:
   version "0.1.7"
@@ -9709,7 +9709,7 @@ xtend@^4.0.0, xtend@~4.0.1:
 
 xterm@3.1.0:
   version "3.1.0"
-  resolved "http://registry.npmjs.org/xterm/-/xterm-3.1.0.tgz#7f7e1c8cf4b80bd881a4e8891213b851423e90c9"
+  resolved "https://registry.npmjs.org/xterm/-/xterm-3.1.0.tgz#7f7e1c8cf4b80bd881a4e8891213b851423e90c9"
 
 xterm@^3.11.0:
   version "3.11.0"
